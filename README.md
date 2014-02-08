@@ -1,7 +1,7 @@
 Sky-cam
 =========
 
-Sky-Cam is a command-line video stacking software for linux. The software is designed to generate stacked images from a video device.
+Sky-cam is a command-line video stacking software for linux. The software is designed to generate stacked images from a video device.
 
 Prerequisities
 ------------
@@ -10,13 +10,13 @@ First of all, you'll need a computer and a video device supported by V4L2 interf
 
 Secondly, you'll need a linux distribution providing a build environment (gcc and make) and the needed libraries (libpng). If the libraries are not available, they can be downloaded for free and compiled.
 
-Secondly, you'll need the Sky-Cam source code and a build tools (see below).
+Secondly, you'll need the Sky-cam source code and a build tools (see below).
 
 
 Install required software and libraries
 ------------
 
-To install the Sky-Cam software, start by installing the prerequisite libraries and compilation tools:
+To install the Sky-cam, start by installing the prerequisite libraries and compilation tools:
 
 In Debian, Ubuntu, etc., issue the command below in a terminal window (or install via graphical package manager):
 
@@ -39,7 +39,7 @@ git clone https://github.com/pnuu/sky-cam.git
 Compile the software:
 
 ```
-cd sky-cam
+cd sky-cam/src/
 make
 ```
 
@@ -136,3 +136,4 @@ Continuous "operational" use
 
 Two template scripts are provided with the source code, namely "sky-cam.sh" and "sky-cam_day.sh". These scripts can be used to control separately which stacks are saved at different time. For example, for TLEs and meteors, the interesting stuff happens at night, and these images are saved. Even if the day time images are not interesting in the sense of observation of these phenomena, the software can be used to save weather camera data to be used in web page with a consant filename, and the disks won't be filled with images.
 
+There are also various other scripts under utils/ directory, which are still undocumented.

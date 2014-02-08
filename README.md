@@ -1,7 +1,10 @@
+Sky-cam
+=========
 
 Sky-Cam is a command-line video stacking software for linux. The software is designed to generate stacked images from a video device.
 
-=== Prerequisities ===
+Prerequisities
+------------
 
 First of all, you'll need a computer and a video device supported by V4L2 interface. The video device can be a webcam or a security camera (Watec, etc.) connected to a supported video capture card. At the moment, only devices with YUYV output (monochrome or color) are supported. Support for devices with direct RGB output might be available some day in the future.
 
@@ -10,7 +13,8 @@ Secondly, you'll need a linux distribution providing a build environment (gcc an
 Secondly, you'll need the Sky-Cam source code and a build environment.
 
 
-=== Install required software and libraries ===
+Install required software and libraries
+------------
 
 To install the Sky-Cam software, start by installing the prerequisite libraries and compilation tools:
 
@@ -21,7 +25,8 @@ sudo apt-get install gcc make libpng12-dev
 The installation might suggest some other packages, install also those.
 
 
-=== Compilation ===
+Compilation
+------------
 
 Extract the software source code:
 
@@ -37,7 +42,8 @@ make
 After this, there should be an executable called sky-cam within the source directory. You can copy the executable to a more suitable place, eg. to bin directory in your home directory.
 
 
-=== Features ===
+Features
+------------
 
 To see the list of command-line parameters, issue the following command in terminal within the directory where the software is located:
 
@@ -106,7 +112,8 @@ In some uses, there's no point in continuing the imaging forever. To limit the t
 sky-cam -M -l 18000
 
 
-=== Continuous "operational" use ===
+Continuous "operational" use
+------------
 
 Two template scripts are provided with the source code, namely "sky-cam.sh" and "sky-cam_day.sh". These scripts can be used to control separately which stacks are saved at different time. For example, for TLEs and meteors, the interesting stuff happens at night, and these images are saved. Even if the day time images are not interesting in the sense of observation of these phenomena, the software can be used to save weather camera data to be used in web page with a consant filename, and the disks won't be filled with images.
 

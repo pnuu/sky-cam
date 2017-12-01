@@ -40,7 +40,7 @@ def convert_ave(img):
     r__ = np.array(r__).astype(np.float)
     g__ = np.array(g__).astype(np.float)
     b__ = np.array(b__).astype(np.float)
-    
+
     avg = r__ * 2**16 + g__ * 2**8 + b__
     avg /= avg[0,0]
 
@@ -51,7 +51,7 @@ def convert_time(img):
     r__ = np.array(r__).astype(np.float)
     g__ = np.array(g__).astype(np.float)
     b__ = np.array(b__).astype(np.float)
-    
+
     start_time = 2**16 * (r__[0][0] * 2**16 + g__[0][0] * 2**8 + b__[0][0]) + \
         (r__[0][1] * 2**16 + g__[0][1] * 2**8 + b__[0][1]) + \
         (r__[0][2] * 2**16 + g__[0][2] * 2**8 + b__[0][2])/1000.

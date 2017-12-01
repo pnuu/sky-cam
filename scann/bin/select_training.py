@@ -24,6 +24,44 @@ PATTERN_MAX = "{camera}_{time:%Y-%m-%d_%H%M%S}_UTC_{length:d}_s_max.png"
 PATTERN_AVE = "{camera}_{time:%Y-%m-%d_%H%M%S}_UTC_{length:d}_s_ave24.png"
 PATTERN_TIME = "{camera}_{time:%Y-%m-%d_%H%M%S}.???_UTC_pixel_times.png"
 
+def show_img(img, **kwargs):
+    """Show image"""
+    plt.imshow(img, interpolation='none', **kwargs)
+
+def show_ratio(img):
+    """Show max/average ratio image"""
+    show_img(img, vmin=1.0, vmax=2.0)
+
+SHOW_IMG = {'m': show_img, 'a': show_img, 'r': show_ratio, 't': show_img}
+
+
+def convert_ave(img):
+    r__, g__, b__ = img.split()
+    r__ = np.array(r__).astype(np.float)
+    g__ = np.array(g__).astype(np.float)
+    b__ = np.array(b__).astype(np.float)
+    
+    avg = r__ * 2**16 + g__ * 2**8 + b__
+    avg /= avg[0,0]
+
+    return avg
+
+def convert_time(img):
+    r__, g__, b__ = img.split()
+    r__ = np.array(r__).astype(np.float)
+    g__ = np.array(g__).astype(np.float)
+    b__ = np.array(b__).astype(np.float)
+    
+    start_time = 2**16 * (r__[0][0] * 2**16 + g__[0][0] * 2**8 + b__[0][0]) + \
+        (r__[0][1] * 2**16 + g__[0][1] * 2**8 + b__[0][1]) + \
+        (r__[0][2] * 2**16 + g__[0][2] * 2**8 + b__[0][2])/1000.
+
+    start_time = dt.datetime.utcfromtimestamp(start_time)
+
+    sec = .001 * (r__ * 2**16 + g__ * 2**8 + b__)
+
+    return sec, start_time
+
 
 def random_date(start=START, end=dt.datetime.utcnow()):
     """Get a random datetime
@@ -146,6 +184,8 @@ def run(base_dir, training_dir):
     else:
         dir_files = []
 
+    categories = {c for d in data for c in data[d]}
+
     i = 0
     while True:
         # Get a set of files
@@ -158,27 +198,54 @@ def run(base_dir, training_dir):
                 break
         i += 1
         date = parse(PATTERN_MAX, fnames['max'])['time']
+
+        if date in data:
+            print "Image already used, skipping", date
+            continue
+
         # Read maximum stack
-        img = np.array(Image.open(fnames['max']))
+        img_max = np.array(Image.open(fnames['max'])).astype(np.float)
+        # Read average stack
+        img_avg = convert_ave(Image.open(fnames['ave']))
+        # Calculate max/avg ratio
+        img_ratio = img_max / img_avg
+        # Read time image
+        img_time, _ = convert_time(Image.open(fnames['time']))
+
+        mode = 'm'
         # Collect points from image for and associate them to a category
         while True:
-            plt.imshow(img, interpolation='none')
+            if mode == 'm':
+                img = img_max.copy()
+            elif mode == 'a':
+                img = img_avg.copy()
+            elif mode == 'r':
+                img = img_ratio.copy()
+            elif mode == 't':
+                img = img_time.copy()
+
+            SHOW_IMG[mode](img)
             plt.title(str(date))
             pts = plt.ginput(timeout=0, n=0)
+
             if len(pts) > 0:
                 if date not in data:
                     data[date] = {}
+                print "Existing categories:", categories
                 cat = raw_input("Give category: ")
-                data[date][cat] = [(int(round(y)), int(round(x))) for
-                                   y, x in pts]
+                if cat != "":
+                    data[date][cat] = [(int(round(y)), int(round(x))) for
+                                       y, x in pts]
+                    categories.add(cat)
 
-                if raw_input("Continue with this image? [Y/n]: ") in ["", "y",
-                                                                      "Y"]:
-                    continue
-                else:
-                    break
+            new_mode = raw_input("Again? [Y/m/a/r/t/n]: ").lower()
+            if new_mode in ['y', 'm', 'a', 'r', 't', '']:
+                if new_mode not in ['', 'y']:
+                    mode = new_mode
+                continue
             else:
                 break
+
         if date in data:
             for key in fnames:
                 try:
@@ -191,7 +258,7 @@ def run(base_dir, training_dir):
         else:
             break
 
-    print "Images used:", i
+    print "Images analyzed:", i
     save_yaml(data, training_dir)
 
 

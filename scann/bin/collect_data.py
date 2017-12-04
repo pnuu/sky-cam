@@ -4,6 +4,7 @@ import os.path
 import glob
 import sys
 import datetime as dt
+from shutil import copyfile
 
 import yaml
 from PIL import Image
@@ -11,11 +12,20 @@ import numpy as np
 
 from trollsift import parse, compose
 
+from scann import features as ft
+
 PIXEL_FILE = "pixels.yaml"
+TRAINING_FILE = "training_data.yaml"
 TIME_FORMAT = "{time:%Y-%m-%d_%H%M%S}"
 PATTERN_MAX = "{camera}_{time:%Y-%m-%d_%H%M%S}_UTC_{length:d}_s_max.png"
 PATTERN_AVE = "{camera}_{time:%Y-%m-%d_%H%M%S}_UTC_{length:d}_s_ave24.png"
 PATTERN_TIME = "{camera}_{time:%Y-%m-%d_%H%M%S}.???_UTC_pixel_times.png"
+
+FEATURES = {'pix_max_val': ft.pix_max_val,
+            'pix_avg_mean_ratio': ft.pix_avg_mean_ratio,
+            'pix_max_mean_ratio': ft.pix_max_mean_ratio,
+            'pix_avg_max_ratio': ft.pix_avg_max_ratio,
+            'flash': ft.flash}
 
 def read_yaml(training_dir):
     """Get data from from file, or return empty dictionary"""
@@ -94,52 +104,62 @@ def collect_data(training_dir):
     data = {}
     pix_data = read_yaml(training_dir)
     for date in pix_data:
-        max_file = glob.glob(os.path.join(training_dir,
-                                          "*" + compose(TIME_FORMAT,
-                                                        date) + "*max.png"))
-        avg_file = glob.glob(os.path.join(training_dir,
-                                          "*" + compose(TIME_FORMAT,
-                                                        date) + "*ave24.png"))
-        time_file = glob.glob(os.path.join(training_dir,
-                                           "*" + compose(TIME_FORMAT,
-                                                         date) + "*times.png"))
+        print date
+        pattern = "*" + compose(TIME_FORMAT, {'time': date}) + "*max.png"
+        max_file = glob.glob(os.path.join(training_dir, pattern))[0]
+        pattern = "*" + compose(TIME_FORMAT, {'time': date}) + "*ave24.png"
+        avg_file = glob.glob(os.path.join(training_dir, pattern))[0]
+        pattern = "*" + compose(TIME_FORMAT, {'time': date}) + "*times.png"
+        time_file = glob.glob(os.path.join(training_dir, pattern))[0]
 
         # Read max image
         img_max = np.array(Image.open(max_file)).astype(np.float)
         # Read average stack
         img_avg = convert_ave(Image.open(avg_file))
         # Calculate max/avg ratio
-        img_ratio = img_max / img_avg
+        # img_ratio = img_max / img_avg
         # Read time image
         img_time, start_time = convert_time(Image.open(time_file))
 
-        for cat in data[date]:
+        for cat in pix_data[date]:
+            print "\t", cat
             if cat not in data:
-                data[cat] = init_feature_dict()
+                data[cat] = {}
 
-            for x__, y__ in pix_data[cat]:
-                for feat in data[cat]:
-                    res = get_feature_data(feat, max_file, avg_file, time_file)
-                    data[cat][feat] += res
+            for feat in FEATURES:
+                print "\t\t", feat
+                func = FEATURES[feat]
+                res = func(img_max, img_avg, img_time)
+                for x__, y__ in pix_data[date][cat]:
+                    if feat not in data[cat]:
+                        data[cat][feat] = []
+                    data[cat][feat].append(float(res[y__, x__]))
                 
 
     return data
 
 
-def init_feature_dict():
-    """Initialize feture dictionary"""
-    return {}
-
-
 def save_data(data, training_dir):
     """Save data to the given dir"""
-    pass
+    out_file = os.path.join(training_dir, TRAINING_FILE)
+    try:
+        copyfile(out_file, out_file + '.bak')
+    except IOError:
+        pass
+
+    with open(out_file, 'w') as fid:
+        yaml.dump(data, stream=fid)
+
+    print "Category data saved to", out_file
+
 
 
 def main():
     """main()"""
     training_dir = sys.argv[1]
     data = collect_data(training_dir)
+    import pdb
+    pdb.set_trace()
     save_data(data, training_dir)
 
 if __name__ == "__main__":

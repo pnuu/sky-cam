@@ -31,7 +31,7 @@ def flash(img_max, img_avg, img_time):
     two_down = flash_moved_down(img_time, shift=2)
 
     # True in two up/down AND False in one up/down -> flash
-    one_up_down = np.logical_and(one_up, one_down)
+    one_up_down = np.logical_or(one_up, one_down)
     two_up_down = np.logical_and(two_up, two_down)
 
     return np.logical_and(np.invert(one_up_down), two_up_down)
@@ -60,10 +60,7 @@ def flash_moved_up(img_time, shift):
     up_right[:y_shp - shift, 1:] = img_time[shift:, :-1]
 
     # Merge
-    if shift % 2 == 1:
-        func = np.logical_not
-    else:
-        func = np.logical_and
+    func = np.logical_and
     res = (func(img_time, up_) +
            func(img_time, up_left) +
            func(img_time, up_right))
@@ -86,10 +83,7 @@ def flash_moved_down(img_time, shift):
     down_right[shift:, 1:] = img_time[:y_shp - shift:, :-1]
 
     # Merge
-    if shift % 2 == 1:
-        func = np.logical_not
-    else:
-        func = np.logical_and
+    func = np.logical_and
     res = (func(img_time, down) +
            func(img_time, down_left) +
            func(img_time, down_right))

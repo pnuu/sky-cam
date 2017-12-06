@@ -84,19 +84,19 @@ def convert_ave(img):
 
 def convert_time(img):
     r__, g__, b__ = img.split()
-    r__ = np.array(r__).astype(np.float)
-    g__ = np.array(g__).astype(np.float)
-    b__ = np.array(b__).astype(np.float)
+    r__ = np.array(r__).astype(np.uint32)
+    g__ = np.array(g__).astype(np.uint32)
+    b__ = np.array(b__).astype(np.uint32)
 
     start_time = 2**16 * (r__[0][0] * 2**16 + g__[0][0] * 2**8 + b__[0][0]) + \
         (r__[0][1] * 2**16 + g__[0][1] * 2**8 + b__[0][1]) + \
-        (r__[0][2] * 2**16 + g__[0][2] * 2**8 + b__[0][2])/1000.
+        (r__[0][2] * 2**16 + g__[0][2] * 2**8 + b__[0][2]) / 1000.
 
     start_time = dt.datetime.utcfromtimestamp(start_time)
 
-    sec = .001 * (r__ * 2**16 + g__ * 2**8 + b__)
+    msec = (r__ * 2**16 + g__ * 2**8 + b__)
 
-    return sec, start_time
+    return msec, start_time
 
 
 def collect_data(training_dir):

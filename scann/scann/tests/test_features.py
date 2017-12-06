@@ -7,27 +7,27 @@ from scann import features
 
 class TestFeatures(unittest.TestCase):
 
-    not_flashing_1 = np.zeros((5, 5), dtype=np.float)
+    not_flashing_1 = np.zeros((5, 5), dtype=np.uint32)
     not_flashing_2 = np.array([[0, 0, 0, 0, 0],
                                [0, 0, 0, 1, 0],
                                [0, 0, 0, 0, 0],
                                [0, 1, 0, 0, 0],
-                               [0, 0, 0, 0, 0]], dtype=np.float)
+                               [0, 0, 0, 0, 0]], dtype=np.uint32)
     flashing_1 = np.array([[0, 0, 0, 0, 0],
                            [0, 1, 1, 1, 0],
                            [0, 0, 0, 0, 0],
                            [0, 1, 1, 1, 0],
-                           [0, 0, 0, 0, 0]], dtype=np.float)
+                           [0, 0, 0, 0, 0]], dtype=np.uint32)
     flashing_2 = np.array([[0, 0, 0, 0, 0],
                            [0, 0, 1, 0, 0],
                            [0, 0, 0, 0, 0],
                            [0, 0, 1, 0, 0],
-                           [0, 0, 0, 0, 0]], dtype=np.float)
+                           [0, 0, 0, 0, 0]], dtype=np.uint32)
     flashing_3 = np.array([[0, 0, 0, 0, 0],
                            [0, 1, 0, 1, 0],
                            [0, 0, 0, 0, 0],
                            [0, 0, 1, 0, 0],
-                           [0, 0, 0, 0, 0]], dtype=np.float)
+                           [0, 0, 0, 0, 0]], dtype=np.uint32)
 
     def test_flash_moved_up(self):
         pass

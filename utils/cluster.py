@@ -14,7 +14,10 @@ import pdb
 
 AVE_MAX_RATIO_LIMIT = 0.5
 DIST_LIMIT = 5**2
-SIZE_LIMIT = 15
+SIZE_LIMIT = 21
+TRAVEL_LIMIT = 5
+DURATION_LIMIT = 10
+SPEED_LIMIT = 19
 
 
 def convert_ave(img):
@@ -71,7 +74,9 @@ def cluster(msec_times, unique_times, mask):
     out = {}
     for key in clusters:
         if len(clusters[key]['x']) > SIZE_LIMIT:
-            out[key] = clusters[key]
+            out[key] = {}
+            for itm in clusters[key]:
+                out[key][itm] = np.array(clusters[key][itm])
 
     return out
 
@@ -112,6 +117,7 @@ def main():
 
     clusters = cluster(msec, unique_times, mask)
 
+    clusters = speed_filter(clusters)
     draw(img_max, clusters)
 
     # pdb.set_trace()
@@ -129,6 +135,38 @@ def draw(img_max, clusters):
         plt.plot(x__, y__, '.')
 
     plt.show()
+
+
+def speed_filter(clusters):
+    """"""
+    out = {}
+    for key in clusters:
+        min_idx = np.argmin(clusters[key]['t'])
+        max_idx = np.argmax(clusters[key]['t'])
+        min_t = clusters[key]['t'][min_idx]
+        min_x = clusters[key]['x'][min_idx]
+        min_y = clusters[key]['y'][min_idx]
+        max_t = clusters[key]['t'][max_idx]
+        max_x = clusters[key]['x'][max_idx]
+        max_y = clusters[key]['y'][max_idx]
+
+        distance = np.sqrt((max_x - min_x)**2 + (max_y - min_y)**2)
+        duration = (max_t - min_t) / 1000.
+        speed = distance / duration
+
+        if (distance > TRAVEL_LIMIT and duration < DURATION_LIMIT and
+                speed > SPEED_LIMIT):
+            print distance, duration, speed
+            out[key] = {}
+            for itm in clusters[key]:
+                out[key][itm] = np.array(clusters[key][itm])
+
+        # Remove from clusters if:
+        # - distance < 5
+        # - duration > 10
+        # - speed < 19
+
+    return out
 
 
 if __name__ == "__main__":

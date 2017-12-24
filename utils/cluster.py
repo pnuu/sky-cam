@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import pdb
-
+from numba import jit
 
 AVE_MAX_RATIO_LIMIT = 0.5
 DIST_LIMIT = 5**2
@@ -21,10 +21,10 @@ SPEED_LIMIT = 19
 
 
 def convert_ave(img):
-    r__, g__, b__ = img.split()
-    r__ = np.array(r__).astype(np.float)
-    g__ = np.array(g__).astype(np.float)
-    b__ = np.array(b__).astype(np.float)
+    """Convert sum image to average."""
+    r__ = img[:, :, 0]
+    g__ = img[:, :, 1]
+    b__ = img[:, :, 2]
 
     avg = r__ * 2**16 + g__ * 2**8 + b__
     avg /= avg[0, 0]
@@ -33,10 +33,11 @@ def convert_ave(img):
 
 
 def convert_time(img):
-    r__, g__, b__ = img.split()
-    r__ = np.array(r__).astype(np.uint32)
-    g__ = np.array(g__).astype(np.uint32)
-    b__ = np.array(b__).astype(np.uint32)
+    """Convert time image to milliseconds.  Return also start time as
+    datetime"""
+    r__ = img[:, :, 0]
+    g__ = img[:, :, 1]
+    b__ = img[:, :, 2]
 
     start_time = 2**16 * (r__[0][0] * 2**16 + g__[0][0] * 2**8 + b__[0][0]) + \
         (r__[0][1] * 2**16 + g__[0][1] * 2**8 + b__[0][1]) + \
@@ -65,40 +66,53 @@ def cluster(msec_times, unique_times, mask):
     """bar"""
     msec = msec_times.copy()
     msec[np.invert(mask)] = int(1e18)
+
     clusters = {}
+    create_clusters(clusters, unique_times, msec)
+
+    clusters = size_filter_clusters(clusters)
+
+    return clusters
+
+
+def create_clusters(clusters, unique_times, msec):
+    """"""
     for t__ in unique_times:
         y_idxs, x_idxs = np.where(msec == t__)
         for y__, x__ in zip(y_idxs, x_idxs):
             add_to_cluster(clusters, x__, y__, t__)
 
+
+def size_filter_clusters(clusters):
+    """"""
     out = {}
     for key in clusters:
         if len(clusters[key]['x']) > SIZE_LIMIT:
             out[key] = {}
             for itm in clusters[key]:
                 out[key][itm] = np.array(clusters[key][itm])
-
     return out
 
 
 def add_to_cluster(clusters, x__, y__, t__):
     """baz"""
-    def add(clusters, key, x__, y__, t__):
-        clusters[key]['x'].append(x__)
-        clusters[key]['y'].append(y__)
-        clusters[key]['t'].append(t__)
-
     count = len(clusters)
     for key in clusters:
         x_idxs = np.array(clusters[key]['x'])
         y_idxs = np.array(clusters[key]['y'])
         dists = (x_idxs - x__)**2 + (y_idxs - y__)**2
         if np.min(dists) < DIST_LIMIT:
-            add(clusters, key, x__, y__, t__)
+            __add(clusters, key, x__, y__, t__)
             return
 
     clusters[count] = {'x': [], 'y': [], 't': []}
-    add(clusters, count, x__, y__, t__)
+    __add(clusters, count, x__, y__, t__)
+
+
+def __add(clusters, key, x__, y__, t__):
+    clusters[key]['x'].append(x__)
+    clusters[key]['y'].append(y__)
+    clusters[key]['t'].append(t__)
 
 
 def main():
@@ -108,26 +122,28 @@ def main():
     time_fname = sys.argv[1]
 
     img_max = np.array(Image.open(max_fname))
-    img_ave = convert_ave(Image.open(ave_fname))
-    msec, start_time = convert_time(Image.open(time_fname))
+    if len(img_max.shape) == 3:
+        img_max = np.mean(img_max, 2)
+    img_ave = convert_ave(np.array(Image.open(ave_fname), dtype=np.float))
+    msec, start_time = convert_time(np.array(Image.open(time_fname),
+                                             dtype=np.uint32))
 
     mask = find_candidates(img_max, img_ave)
     print np.sum(mask)
     unique_times = np.sort(np.unique(msec[np.where(mask)]))
 
     clusters = cluster(msec, unique_times, mask)
-
     clusters = speed_filter(clusters)
     draw(img_max, clusters)
 
     # pdb.set_trace()
 
-    print len(clusters)
+    # print len(clusters.clusters)
 
 
 def draw(img_max, clusters):
     """"""
-    plt.imshow(img_max, cmap='gray')
+    plt.imshow(img_max, cmap='gray', interpolation='none')
     # markers = ['r.', 'y.']
     for i, key in enumerate(clusters):
         x__ = np.array(clusters[key]['x'])
@@ -154,9 +170,10 @@ def speed_filter(clusters):
         duration = (max_t - min_t) / 1000.
         speed = distance / duration
 
+        print distance, duration, speed
+
         if (distance > TRAVEL_LIMIT and duration < DURATION_LIMIT and
                 speed > SPEED_LIMIT):
-            print distance, duration, speed
             out[key] = {}
             for itm in clusters[key]:
                 out[key][itm] = np.array(clusters[key][itm])

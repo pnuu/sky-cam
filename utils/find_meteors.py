@@ -4,9 +4,14 @@ import os.path
 import glob
 import sys
 import datetime as dt
+import logging
 
 from PIL import Image
 import numpy as np
+
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+
+LOGGER = logging.getLogger('find_meteors')
 
 BIG_NUMBER = int(1e18)
 AVE_MAX_RATIO_LIMIT = 0.5
@@ -110,7 +115,7 @@ class MeteorDetect(object):
         self.candidates = self.get_candidates()
         if mask is not None:
             self.candidates[mask] = False
-        print("%d candidate pixels found" % self.candidates.sum())
+        LOGGER.info("%d candidate pixels found" % self.candidates.sum())
         self.create()
         self.size_filter()
         self.join_candidates()
@@ -118,7 +123,7 @@ class MeteorDetect(object):
 
     def get_candidates(self):
         """Find meteor candidates."""
-        print("Finding meteor candidates")
+        LOGGER.info("Finding meteor candidates")
         if len(self.img_max.shape) == 3:
             ratio = self.img_ave / np.mean(self.img_max, 2)
         else:
@@ -135,7 +140,7 @@ class MeteorDetect(object):
 
     def create(self):
         """Create initial clusters"""
-        print("Create clusters")
+        LOGGER.info("Create clusters")
         msec = self.times.copy()
         msec[np.invert(self.candidates)] = BIG_NUMBER
 
@@ -168,7 +173,7 @@ class MeteorDetect(object):
 
     def size_filter(self):
         """Filter clusters based on their size."""
-        print("Filter clusters based on size")
+        LOGGER.info("Filter clusters based on size")
         clusters = self.meteors
         valid = {}
         removed = {}
@@ -187,7 +192,7 @@ class MeteorDetect(object):
 
     def speed_filter(self):
         """Apply speed filtering."""
-        print("Filter clusters based on speed")
+        LOGGER.info("Filter clusters based on speed")
         clusters = self.meteors
         out = {}
         for key in clusters:
@@ -225,7 +230,7 @@ class MeteorDetect(object):
         """Join clusters that are clearly from the same event."""
         valid = self.meteors
         removed = self.removed
-        print("Join", len(removed), "clusters")
+        LOGGER.info("Join %d clusters", len(removed))
         num_added = 0
         for key in removed:
             r_t = np.array(removed[key]['t'])
@@ -255,7 +260,7 @@ class MeteorDetect(object):
                 # if not added_new:
                 #         break
 
-        print("Joined", num_added, "pixels to other clusters")
+        LOGGER.info("Joined %d pixels to other clusters", num_added)
 
     def print_meteors(self):
         """Print meteor data"""

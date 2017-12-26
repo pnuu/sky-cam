@@ -294,15 +294,20 @@ class MeteorDetect(object):
 
     def draw(self):
         """Draw detections over max stack"""
-        import matplotlib.pyplot as plt
-
-        plt.imshow(self.img_max, cmap='gray', interpolation='none')
+        if len(self.meteors) == 0:
+            return
+        shp = self.img_max.shape
+        img = np.repeat(self.img_max, 3).reshape((shp[0], shp[1], 3)) / 255.
         for i, key in enumerate(self.meteors):
             x__ = np.array(self.meteors[key]['x'])
             y__ = np.array(self.meteors[key]['y'])
-            plt.plot(x__, y__, '.')
+            img[y__, x__, :] = [1., 0., 0.]
 
-        plt.show()
+        img *= 255
+        img = Image.fromarray(img.astype(np.uint8))
+        fname = "%s_%s.jpg" % (self.camera,
+                               self.start_time.strftime("%Y%m%d_%H%M%S.%f"))
+        img.save(os.path.join(SAVE_DIR, fname))
 
 
 def main():
@@ -318,8 +323,8 @@ def main():
 
     meteors = MeteorDetect(max_fname, ave_fname, time_fname, mask=mask)
     meteors.print_meteors()
-    # meteors.draw()
     meteors.save_meteors()
+    meteors.draw()
 
 if __name__ == "__main__":
     main()

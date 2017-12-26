@@ -25,36 +25,6 @@ MIN_TIME_DIFF = 100
 SAVE_DIR = "/tmp/"
 
 
-def convert_ave(img):
-    """Convert sum image to average."""
-    r__ = img[:, :, 0]
-    g__ = img[:, :, 1]
-    b__ = img[:, :, 2]
-
-    avg = r__ * 2**16 + g__ * 2**8 + b__
-    avg /= avg[0, 0]
-
-    return avg
-
-
-def convert_time(img):
-    """Convert time image to milliseconds.  Return also start time as
-    datetime"""
-    r__ = img[:, :, 0]
-    g__ = img[:, :, 1]
-    b__ = img[:, :, 2]
-
-    start_time = 2**16 * (r__[0][0] * 2**16 + g__[0][0] * 2**8 + b__[0][0]) + \
-        (r__[0][1] * 2**16 + g__[0][1] * 2**8 + b__[0][1]) + \
-        (r__[0][2] * 2**16 + g__[0][2] * 2**8 + b__[0][2]) / 1000.
-
-    start_time = dt.datetime.utcfromtimestamp(start_time)
-
-    msec = (r__ * 2**16 + g__ * 2**8 + b__)
-
-    return msec, start_time
-
-
 def read_max(fname):
     """Read max image"""
     img = np.array(Image.open(fname))

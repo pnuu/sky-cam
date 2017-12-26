@@ -323,8 +323,11 @@ def cron_main():
         tstr = os.path.basename(max_fname).split('_')[2]
         time_fname = glob.glob(os.path.join(base_dir, "pixel_times",
                                             "*" + tstr + "*.png"))[0]
-        ave_fname = glob.glob(os.path.join(base_dir, "ave",
-                                           "*" + tstr + "*.png"))[0]
+        ave_fnames = glob.glob(os.path.join(base_dir, "ave",
+                                            "*" + tstr + " * .png"))
+        ave_fname = ave_fnames[0]
+        if os.path.basename(ave_fname).startswith("mod"):
+            ave_fname = ave_fnames[1]
 
         meteors = MeteorDetect(max_fname, ave_fname, time_fname,
                                mask=mask, save_dir=save_dir)

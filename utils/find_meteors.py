@@ -7,10 +7,6 @@ import datetime as dt
 
 from PIL import Image
 import numpy as np
-import matplotlib.pyplot as plt
-
-import pdb
-from numba import jit
 
 BIG_NUMBER = int(1e18)
 AVE_MAX_RATIO_LIMIT = 0.5
@@ -20,6 +16,8 @@ TRAVEL_LIMIT = 5
 DURATION_LIMIT = 10
 SPEED_LIMIT = 19
 MIN_TIME_DIFF = 100
+
+SAVE_DIR = "/tmp/"
 
 
 def convert_ave(img):
@@ -100,11 +98,14 @@ class MeteorDetect(object):
 
     meteors = {}
     removed = {}
+    camera = ""
 
     def __init__(self, max_fname, ave_fname, time_fname, mask=None):
         self.img_max = read_max(max_fname)
         self.img_ave = read_ave(ave_fname)
         self.times, self.start_time = read_time(time_fname)
+
+        self.camera = os.path.basename(max_fname).split('_')[0]
 
         self.candidates = self.get_candidates()
         if mask is not None:
@@ -260,7 +261,7 @@ class MeteorDetect(object):
         """Print meteor data"""
         for key in self.meteors:
             times = np.array(self.meteors[key]['t']) / 1000.
-            time_min = times[0]
+            time_min = np.min(times)
             times -= time_min
             x__ = self.meteors[key]['x']
             y__ = self.meteors[key]['y']
@@ -269,8 +270,28 @@ class MeteorDetect(object):
             for i in range(times.size):
                 print times[i], x__[i], y__[i]
 
+    def save_meteors(self):
+        """Save meteors"""
+        for key in self.meteors:
+            times = np.array(self.meteors[key]['t']) / 1000.
+            time_min = np.min(times)
+            start_time = self.start_time + dt.timedelta(seconds=int(time_min))
+            start_time = start_time.strftime("%Y%m%d_%H%M%S.%f")
+            out_fname = "%s_%s.csv" % (self.camera, start_time)
+            out_fname = os.path.join(SAVE_DIR, out_fname)
+            times -= time_min
+            x__ = self.meteors[key]['x']
+            y__ = self.meteors[key]['y']
+            with open(out_fname, 'w') as fid:
+                fid.write("# %s\n" % start_time)
+                fid.write("# relative time [s], x, y\n")
+                for i in range(times.size):
+                    fid.write("%.3f,%d,%d\n" % (times[i], x__[i], y__[i]))
+
     def draw(self):
         """Draw detections over max stack"""
+        import matplotlib.pyplot as plt
+
         plt.imshow(self.img_max, cmap='gray', interpolation='none')
         for i, key in enumerate(self.meteors):
             x__ = np.array(self.meteors[key]['x'])
@@ -292,8 +313,9 @@ def main():
         mask = None
 
     meteors = MeteorDetect(max_fname, ave_fname, time_fname, mask=mask)
-    # meteors.print_meteors()
-    meteors.draw()
+    meteors.print_meteors()
+    # meteors.draw()
+    meteors.save_meteors()
 
 if __name__ == "__main__":
     main()

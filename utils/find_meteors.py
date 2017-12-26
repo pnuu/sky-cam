@@ -256,6 +256,7 @@ class MeteorDetect(object):
                 fid.write("# relative time [s], x, y\n")
                 for i in range(times.size):
                     fid.write("%.3f,%d,%d\n" % (times[i], x__[i], y__[i]))
+        LOGGER.info("Saved %d detections", len(self.meteors))
 
     def _get_meteor_times(self, key):
         """Get start and relative times for meteors"""

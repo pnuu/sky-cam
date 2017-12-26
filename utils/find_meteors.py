@@ -101,12 +101,15 @@ class MeteorDetect(object):
     meteors = {}
     removed = {}
 
-    def __init__(self, max_fname, ave_fname, time_fname):
+    def __init__(self, max_fname, ave_fname, time_fname, mask=None):
         self.img_max = read_max(max_fname)
         self.img_ave = read_ave(ave_fname)
         self.times, self.start_time = read_time(time_fname)
 
         self.candidates = self.get_candidates()
+        if mask is not None:
+            self.candidates[mask] = False
+        print "%d candidate pixels found" % self.candidates.sum()
         self.create()
         self.size_filter()
         self.join_candidates()
@@ -123,7 +126,6 @@ class MeteorDetect(object):
         candidates = ratio < AVE_MAX_RATIO_LIMIT
         if candidates.sum() > 3000:
             candidates = ratio < np.mean(ratio) / 2.
-        print "%d candidate pixels found" % candidates.sum()
 
         return candidates
 
@@ -201,6 +203,7 @@ class MeteorDetect(object):
             duration = .001 * (max_t - min_t)
             speed = distance / duration
 
+            # print distance, duration, speed
             if (distance > TRAVEL_LIMIT and duration < DURATION_LIMIT and
                     speed > SPEED_LIMIT):
                 out[key] = {}
@@ -282,8 +285,13 @@ def main():
     max_fname = sys.argv[3]
     ave_fname = sys.argv[2]
     time_fname = sys.argv[1]
+    try:
+        mask_fname = sys.argv[4]
+        mask = np.array(Image.open(mask_fname)) == 255
+    except IndexError:
+        mask = None
 
-    meteors = MeteorDetect(max_fname, ave_fname, time_fname)
+    meteors = MeteorDetect(max_fname, ave_fname, time_fname, mask=mask)
     # meteors.print_meteors()
     meteors.draw()
 

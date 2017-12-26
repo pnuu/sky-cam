@@ -74,8 +74,10 @@ class MeteorDetect(object):
     meteors = {}
     removed = {}
     camera = ""
+    save_dir = SAVE_DIR
 
-    def __init__(self, max_fname, ave_fname, time_fname, mask=None):
+    def __init__(self, max_fname, ave_fname, time_fname,
+                 mask=None, save_dir=SAVE_DIR):
         self.img_max = read_max(max_fname)
         self.img_ave = read_ave(ave_fname)
         self.times, self.start_time = read_time(time_fname)
@@ -85,7 +87,10 @@ class MeteorDetect(object):
         self.candidates = self.get_candidates()
         if mask is not None:
             self.candidates[mask] = False
-        LOGGER.info("%d candidate pixels found" % self.candidates.sum())
+        LOGGER.info("%d candidate pixels found", self.candidates.sum())
+
+        self.save_dir = save_dir
+
         self.create()
         self.size_filter()
         self.join_candidates()
@@ -248,7 +253,7 @@ class MeteorDetect(object):
         for key in self.meteors:
             start_time, times = self._get_meteor_times(key)
             out_fname = "%s_%s.csv" % (self.camera, start_time)
-            out_fname = os.path.join(SAVE_DIR, out_fname)
+            out_fname = os.path.join(self.save_dir, out_fname)
             x__ = self.meteors[key]['x']
             y__ = self.meteors[key]['y']
             with open(out_fname, 'w') as fid:
@@ -262,7 +267,7 @@ class MeteorDetect(object):
         """Get start and relative times for meteors"""
         times = np.array(self.meteors[key]['t']) / 1000.
         time_min = np.min(times)
-        start_time = self.start_time + dt.timedelta(seconds=int(time_min))
+        start_time = self.start_time + dt.timedelta(seconds=float(time_min))
         start_time = start_time.strftime("%Y%m%d_%H%M%S.%f")
         times -= time_min
 
@@ -283,10 +288,10 @@ class MeteorDetect(object):
         img = Image.fromarray(img.astype(np.uint8))
         fname = "%s_%s.jpg" % (self.camera,
                                self.start_time.strftime("%Y%m%d_%H%M%S.%f"))
-        img.save(os.path.join(SAVE_DIR, fname))
+        img.save(os.path.join(self.save_dir, fname))
 
 
-def main():
+def manual_main():
     """main()"""
     max_fname = sys.argv[3]
     ave_fname = sys.argv[2]
@@ -302,5 +307,27 @@ def main():
     meteors.save_meteors()
     meteors.draw()
 
+
+def cron_main():
+    """Main() for cron usage"""
+    base_dir = sys.argv[1]
+    save_dir = sys.argv[2]
+    try:
+        mask_fname = sys.argv[3]
+        mask = np.array(Image.open(mask_fname)) == 255
+    except IndexError:
+        mask = None
+
+    max_fnames = glob.glob(os.path.join(base_dir, "max", "*.max.png"))
+    for max_fname in max_fnames:
+        tstr = os.path.basename(max_fname).split('_')[2]
+        time_fname = os.path.join(base_dir, "*", tstr, "*", "pixel_times.png")
+        ave_fname = os.path.join(base_dir, "*", tstr, "*", "ave24.png")
+
+        meteors = MeteorDetect(max_fname, ave_fname, time_fname,
+                               mask=mask, save_dir=save_dir)
+        meteors.save_meteors()
+        meteors.draw()
+
 if __name__ == "__main__":
-    main()
+    manual_main()

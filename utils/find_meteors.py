@@ -260,26 +260,20 @@ class MeteorDetect(object):
     def print_meteors(self):
         """Print meteor data"""
         for key in self.meteors:
-            times = np.array(self.meteors[key]['t']) / 1000.
-            time_min = np.min(times)
-            times -= time_min
+            start_time, times = self._get_meteor_times(key)
             x__ = self.meteors[key]['x']
             y__ = self.meteors[key]['y']
+            print "#", start_time
             print "# relative time [s], x, y"
-            print "#", self.start_time + dt.timedelta(seconds=int(time_min))
             for i in range(times.size):
                 print times[i], x__[i], y__[i]
 
     def save_meteors(self):
         """Save meteors"""
         for key in self.meteors:
-            times = np.array(self.meteors[key]['t']) / 1000.
-            time_min = np.min(times)
-            start_time = self.start_time + dt.timedelta(seconds=int(time_min))
-            start_time = start_time.strftime("%Y%m%d_%H%M%S.%f")
+            start_time, times = self._get_meteor_times(key)
             out_fname = "%s_%s.csv" % (self.camera, start_time)
             out_fname = os.path.join(SAVE_DIR, out_fname)
-            times -= time_min
             x__ = self.meteors[key]['x']
             y__ = self.meteors[key]['y']
             with open(out_fname, 'w') as fid:
@@ -287,6 +281,16 @@ class MeteorDetect(object):
                 fid.write("# relative time [s], x, y\n")
                 for i in range(times.size):
                     fid.write("%.3f,%d,%d\n" % (times[i], x__[i], y__[i]))
+
+    def _get_meteor_times(self, key):
+        """Get start and relative times for meteors"""
+        times = np.array(self.meteors[key]['t']) / 1000.
+        time_min = np.min(times)
+        start_time = self.start_time + dt.timedelta(seconds=int(time_min))
+        start_time = start_time.strftime("%Y%m%d_%H%M%S.%f")
+        times -= time_min
+
+        return start_time, times
 
     def draw(self):
         """Draw detections over max stack"""

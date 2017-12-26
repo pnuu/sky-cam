@@ -318,13 +318,13 @@ def cron_main():
     except IndexError:
         mask = None
 
-    max_fnames = glob.glob(os.path.join(base_dir, "max", "*.max.png"))
+    max_fnames = glob.glob(os.path.join(base_dir, "max", "*max.png"))
     for max_fname in max_fnames:
         tstr = os.path.basename(max_fname).split('_')[2]
-        time_fname = glob.glob(os.path.join(base_dir, "*", tstr, "*",
-                                            "pixel_times.png"))[0]
-        ave_fname = glob.glob(os.path.join(base_dir, "*", tstr, "*",
-                                           "ave24.png"))[0]
+        time_fname = glob.glob(os.path.join(base_dir, "pixel_times",
+                                            "*" + tstr + "*.png"))[0]
+        ave_fname = glob.glob(os.path.join(base_dir, "ave",
+                                           "*" + tstr + "*.png"))[0]
 
         meteors = MeteorDetect(max_fname, ave_fname, time_fname,
                                mask=mask, save_dir=save_dir)

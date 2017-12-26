@@ -71,13 +71,13 @@ class MeteorDetect(object):
 
     """Class for finding meteor streaks from sky-cam data."""
 
-    meteors = {}
-    removed = {}
     camera = ""
     save_dir = SAVE_DIR
 
     def __init__(self, max_fname, ave_fname, time_fname,
                  mask=None, save_dir=SAVE_DIR):
+        self.meteors = {}
+        self.removed = {}
         self.img_max = read_max(max_fname)
         self.img_ave = read_ave(ave_fname)
         self.times, self.start_time = read_time(time_fname)
@@ -333,6 +333,7 @@ def cron_main():
                                mask=mask, save_dir=save_dir)
         meteors.save_meteors()
         meteors.draw()
+
 
 if __name__ == "__main__":
     manual_main()

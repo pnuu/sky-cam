@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import os.path
 import glob
@@ -110,7 +110,7 @@ class MeteorDetect(object):
         self.candidates = self.get_candidates()
         if mask is not None:
             self.candidates[mask] = False
-        print "%d candidate pixels found" % self.candidates.sum()
+        print("%d candidate pixels found" % self.candidates.sum())
         self.create()
         self.size_filter()
         self.join_candidates()
@@ -118,7 +118,7 @@ class MeteorDetect(object):
 
     def get_candidates(self):
         """Find meteor candidates."""
-        print "Finding meteor candidates"
+        print("Finding meteor candidates")
         if len(self.img_max.shape) == 3:
             ratio = self.img_ave / np.mean(self.img_max, 2)
         else:
@@ -135,7 +135,7 @@ class MeteorDetect(object):
 
     def create(self):
         """Create initial clusters"""
-        print "Create clusters"
+        print("Create clusters")
         msec = self.times.copy()
         msec[np.invert(self.candidates)] = BIG_NUMBER
 
@@ -168,7 +168,7 @@ class MeteorDetect(object):
 
     def size_filter(self):
         """Filter clusters based on their size."""
-        print "Filter clusters based on size"
+        print("Filter clusters based on size")
         clusters = self.meteors
         valid = {}
         removed = {}
@@ -187,7 +187,7 @@ class MeteorDetect(object):
 
     def speed_filter(self):
         """Apply speed filtering."""
-        print "Filter clusters based on speed"
+        print("Filter clusters based on speed")
         clusters = self.meteors
         out = {}
         for key in clusters:
@@ -225,7 +225,7 @@ class MeteorDetect(object):
         """Join clusters that are clearly from the same event."""
         valid = self.meteors
         removed = self.removed
-        print "Join", len(removed), "clusters"
+        print("Join", len(removed), "clusters")
         num_added = 0
         for key in removed:
             r_t = np.array(removed[key]['t'])
@@ -255,7 +255,7 @@ class MeteorDetect(object):
                 # if not added_new:
                 #         break
 
-        print "Joined", num_added, "pixels to other clusters"
+        print("Joined", num_added, "pixels to other clusters")
 
     def print_meteors(self):
         """Print meteor data"""
@@ -263,10 +263,10 @@ class MeteorDetect(object):
             start_time, times = self._get_meteor_times(key)
             x__ = self.meteors[key]['x']
             y__ = self.meteors[key]['y']
-            print "#", start_time
-            print "# relative time [s], x, y"
+            print("#", start_time)
+            print("# relative time [s], x, y")
             for i in range(times.size):
-                print times[i], x__[i], y__[i]
+                print(times[i], x__[i], y__[i])
 
     def save_meteors(self):
         """Save meteors"""
@@ -322,7 +322,7 @@ def main():
         mask = None
 
     meteors = MeteorDetect(max_fname, ave_fname, time_fname, mask=mask)
-    meteors.print_meteors()
+    # meteors.print_meteors()
     meteors.save_meteors()
     meteors.draw()
 

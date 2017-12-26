@@ -324,7 +324,7 @@ def cron_main():
         time_fname = glob.glob(os.path.join(base_dir, "pixel_times",
                                             "*" + tstr + "*.png"))[0]
         ave_fnames = glob.glob(os.path.join(base_dir, "ave",
-                                            "*" + tstr + " * .png"))
+                                            "*" + tstr + "*.png"))
         ave_fname = ave_fnames[0]
         if os.path.basename(ave_fname).startswith("mod"):
             ave_fname = ave_fnames[1]

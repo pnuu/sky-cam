@@ -252,8 +252,8 @@ class MeteorDetect(object):
             x__ = self.meteors[key]['x']
             y__ = self.meteors[key]['y']
             with open(out_fname, 'w') as fid:
-                fid.write("# %s\n" % start_time)
-                fid.write("# relative time [s], x, y\n")
+                fid.write("# Start time: %s\n" % start_time)
+                fid.write("# Time since start [s], x, y\n")
                 for i in range(times.size):
                     fid.write("%.3f,%d,%d\n" % (times[i], x__[i], y__[i]))
         LOGGER.info("Saved %d detections", len(self.meteors))

@@ -13,6 +13,13 @@ logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 LOGGER = logging.getLogger('find_meteors')
 
+"""
+TODO:
+- save also transients
+- draw transients in blue
+- add "meteor"/"transient" to the CSV filename
+"""
+
 BIG_NUMBER = int(1e18)
 AVE_MAX_RATIO_LIMIT = 0.5
 DIST_LIMIT = 25
@@ -87,7 +94,7 @@ class MeteorDetect(object):
         self.candidates = self.get_candidates()
         if mask is not None:
             self.candidates[mask] = False
-        LOGGER.info("%d candidate pixels found", self.candidates.sum())
+        LOGGER.debug("%d candidate pixels found", self.candidates.sum())
 
         self.save_dir = save_dir
 
@@ -98,7 +105,7 @@ class MeteorDetect(object):
 
     def get_candidates(self):
         """Find meteor candidates."""
-        LOGGER.info("Finding meteor candidates")
+        LOGGER.debug("Finding meteor candidates")
         if len(self.img_max.shape) == 3:
             ratio = self.img_ave / np.mean(self.img_max, 2)
         else:
@@ -112,7 +119,7 @@ class MeteorDetect(object):
 
     def create(self):
         """Create initial clusters"""
-        LOGGER.info("Create clusters")
+        LOGGER.debug("Create clusters")
         y_idxs, x_idxs = np.where(self.candidates)
         t_s = self.times[y_idxs, x_idxs]
         for y__, x__, t__ in zip(y_idxs, x_idxs, t_s):
@@ -154,7 +161,7 @@ class MeteorDetect(object):
 
     def size_filter(self):
         """Filter clusters based on their size."""
-        LOGGER.info("Filter clusters based on size")
+        LOGGER.debug("Filter clusters based on size")
         clusters = self.meteors
         valid = {}
         removed = {}
@@ -173,7 +180,7 @@ class MeteorDetect(object):
 
     def speed_filter(self):
         """Apply speed filtering."""
-        LOGGER.info("Filter clusters based on speed")
+        LOGGER.debug("Filter clusters based on speed")
         clusters = self.meteors
         out = {}
         for key in clusters:
@@ -208,7 +215,7 @@ class MeteorDetect(object):
         """Join clusters that are clearly from the same event."""
         valid = self.meteors
         removed = self.removed
-        LOGGER.info("Join %d clusters", len(removed))
+        LOGGER.debug("Join %d clusters", len(removed))
         num_added = 0
         for key in removed:
             r_t = np.array(removed[key]['t'])
@@ -238,7 +245,7 @@ class MeteorDetect(object):
                 # if not added_new:
                 #         break
 
-        LOGGER.info("Joined %d pixels to other clusters", num_added)
+        LOGGER.debug("Joined %d pixels to other clusters", num_added)
 
     def print_meteors(self):
         """Print meteor data"""
@@ -257,14 +264,16 @@ class MeteorDetect(object):
             start_time, times = self._get_meteor_times(key)
             out_fname = "%s_%s.csv" % (self.camera, start_time)
             out_fname = os.path.join(self.save_dir, out_fname)
-            x__ = self.meteors[key]['x']
-            y__ = self.meteors[key]['y']
+            idxs = np.argsort(times)
+            times = times[idxs]
+            x__ = self.meteors[key]['x'][idxs]
+            y__ = self.meteors[key]['y'][idxs]
+            LOGGER.info("Saving meteor: %s", out_fname)
             with open(out_fname, 'w') as fid:
                 fid.write("# Start time: %s\n" % start_time)
                 fid.write("# Time since start [s], x, y\n")
                 for i in range(times.size):
                     fid.write("%.3f,%d,%d\n" % (times[i], x__[i], y__[i]))
-        LOGGER.info("Saved %d detections", len(self.meteors))
 
     def _get_meteor_times(self, key):
         """Get start and relative times for meteors"""
@@ -282,7 +291,7 @@ class MeteorDetect(object):
             return
         shp = self.img_max.shape
         img = np.repeat(self.img_max, 3).reshape((shp[0], shp[1], 3)) / 255.
-        for i, key in enumerate(self.meteors):
+        for key in self.meteors:
             x__ = np.array(self.meteors[key]['x'])
             y__ = np.array(self.meteors[key]['y'])
             img[y__, x__, :] = [1., 0., 0.]
@@ -291,7 +300,9 @@ class MeteorDetect(object):
         img = Image.fromarray(img.astype(np.uint8))
         fname = "%s_%s.jpg" % (self.camera,
                                self.start_time.strftime("%Y%m%d_%H%M%S.%f"))
-        img.save(os.path.join(self.save_dir, fname))
+        fname = os.path.join(self.save_dir, fname)
+        img.save(fname)
+        LOGGER.info("Saved preview image: %s", fname)
 
 
 def manual_main():
@@ -324,13 +335,17 @@ def cron_main():
     max_fnames = glob.glob(os.path.join(base_dir, "max", "*max.png"))
     for max_fname in max_fnames:
         tstr = os.path.basename(max_fname).split('_')[2]
-        time_fname = glob.glob(os.path.join(base_dir, "pixel_times",
-                                            "*" + tstr + "*.png"))[0]
-        ave_fnames = glob.glob(os.path.join(base_dir, "ave",
-                                            "*" + tstr + "*.png"))
-        ave_fname = ave_fnames[0]
-        if os.path.basename(ave_fname).startswith("mod"):
-            ave_fname = ave_fnames[1]
+
+        try:
+            time_fname = glob.glob(os.path.join(base_dir, "pixel_times",
+                                                "*" + tstr + "*.png"))[0]
+            ave_fnames = glob.glob(os.path.join(base_dir, "ave",
+                                                "*" + tstr + "*.png"))
+            ave_fname = ave_fnames[0]
+            if os.path.basename(ave_fname).startswith("mod"):
+                ave_fname = ave_fnames[1]
+        except IndexError:
+            continue
 
         meteors = MeteorDetect(max_fname, ave_fname, time_fname,
                                mask=mask, save_dir=save_dir)
@@ -339,4 +354,4 @@ def cron_main():
 
 
 if __name__ == "__main__":
-    manual_main()
+    cron_main()

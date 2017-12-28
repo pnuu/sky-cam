@@ -15,7 +15,7 @@ LOGGER = logging.getLogger('find_meteors')
 
 BIG_NUMBER = int(1e18)
 AVE_MAX_RATIO_LIMIT = 0.5
-DIST_LIMIT = 5**2
+DIST_LIMIT = 25
 SIZE_LIMIT = 16
 TRAVEL_LIMIT = 5
 DURATION_LIMIT = 10
@@ -110,41 +110,47 @@ class MeteorDetect(object):
 
         return candidates
 
-    def get_unique_times(self):
-        return np.sort(np.unique(self.times[np.where(self.candidates)]))
-
     def create(self):
         """Create initial clusters"""
         LOGGER.info("Create clusters")
-        msec = self.times.copy()
-        msec[np.invert(self.candidates)] = BIG_NUMBER
-
-        unique_times = self.get_unique_times()
-        for t__ in unique_times:
-            y_idxs, x_idxs = np.where(msec == t__)
-            for y__, x__ in zip(y_idxs, x_idxs):
-                self._add_to_cluster(x__, y__, t__)
+        y_idxs, x_idxs = np.where(self.candidates)
+        t_s = self.times[y_idxs, x_idxs]
+        for y__, x__, t__ in zip(y_idxs, x_idxs, t_s):
+            self._add_to_cluster(x__, y__, t__)
 
     def _add_to_cluster(self, x__, y__, t__):
         """Add points to a cluster"""
         clusters = self.meteors
         count = len(clusters)
         for key in clusters:
-            x_idxs = np.array(clusters[key]['x'])
-            y_idxs = np.array(clusters[key]['y'])
+            x_idxs = clusters[key]['x']
+            y_idxs = clusters[key]['y']
+            t_idxs = clusters[key]['t']
+            # x_idxs = np.array(clusters[key]['x'])
+            # y_idxs = np.array(clusters[key]['y'])
             dists = (x_idxs - x__)**2 + (y_idxs - y__)**2
             if np.min(dists) < DIST_LIMIT:
-                self.__add(key, x__, y__, t__)
+                clusters[key]['x'] = np.append(x_idxs, x__)
+                clusters[key]['y'] = np.append(y_idxs, y__)
+                clusters[key]['t'] = np.append(t_idxs, t__)
+                # clusters[key]['x'].append(x__)
+                # clusters[key]['y'].append(y__)
+                # clusters[key]['t'].append(t__)
                 return
 
-        self.meteors[count] = {'x': [], 'y': [], 't': []}
-        self.__add(count, x__, y__, t__)
+        self.meteors[count] = {'x': np.array([x__]),
+                               'y': np.array([y__]),
+                               't': np.array([t__])}
+        # self.meteors[count] = {'x': [x__], 'y': [y__], 't': [t__]}
 
     def __add(self, key, x__, y__, t__):
         """Add values to cluster *key*."""
-        self.meteors[key]['x'].append(x__)
-        self.meteors[key]['y'].append(y__)
-        self.meteors[key]['t'].append(t__)
+        self.meteors[key]['x'] = np.append(self.meteors[key]['x'], x__)
+        self.meteors[key]['y'] = np.append(self.meteors[key]['y'], y__)
+        self.meteors[key]['t'] = np.append(self.meteors[key]['t'], t__)
+        # self.meteors[key]['x'].append(x__)
+        # self.meteors[key]['y'].append(y__)
+        # self.meteors[key]['t'].append(t__)
 
     def size_filter(self):
         """Filter clusters based on their size."""
@@ -184,15 +190,12 @@ class MeteorDetect(object):
             duration = .001 * (max_t - min_t)
             speed = distance / duration
 
-            # print distance, duration, speed
+            # print(distance, duration, speed)
             if (distance > TRAVEL_LIMIT and duration < DURATION_LIMIT and
                     speed > SPEED_LIMIT):
                 out[key] = {}
                 for itm in clusters[key]:
                     out[key][itm] = clusters[key][itm]
-            # else:
-            #     lisaa self.removed:
-            #         iin
 
         self.meteors = out
 

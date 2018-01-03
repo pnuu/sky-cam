@@ -59,7 +59,7 @@ def read_ave(fname):
 def read_time(fname):
     """Convert time image to milliseconds.  Return also start time as
     datetime"""
-    img = np.array(Image.open(fname), dtype=np.uint32)
+    img = np.array(Image.open(fname), dtype=np.float32)
     r__ = img[:, :, 0]
     g__ = img[:, :, 1]
     b__ = img[:, :, 2]
@@ -134,31 +134,18 @@ class MeteorDetect(object):
             x_idxs = clusters[key]['x']
             y_idxs = clusters[key]['y']
             t_idxs = clusters[key]['t']
-            # x_idxs = np.array(clusters[key]['x'])
-            # y_idxs = np.array(clusters[key]['y'])
+
             dists = (x_idxs - x__)**2 + (y_idxs - y__)**2
-            if np.min(dists) < DIST_LIMIT:
+            min_dist = np.min(dists)
+            if min_dist < DIST_LIMIT:
                 clusters[key]['x'] = np.append(x_idxs, x__)
                 clusters[key]['y'] = np.append(y_idxs, y__)
                 clusters[key]['t'] = np.append(t_idxs, t__)
-                # clusters[key]['x'].append(x__)
-                # clusters[key]['y'].append(y__)
-                # clusters[key]['t'].append(t__)
                 return
 
         self.meteors[count] = {'x': np.array([x__]),
                                'y': np.array([y__]),
                                't': np.array([t__])}
-        # self.meteors[count] = {'x': [x__], 'y': [y__], 't': [t__]}
-
-    def __add(self, key, x__, y__, t__):
-        """Add values to cluster *key*."""
-        self.meteors[key]['x'] = np.append(self.meteors[key]['x'], x__)
-        self.meteors[key]['y'] = np.append(self.meteors[key]['y'], y__)
-        self.meteors[key]['t'] = np.append(self.meteors[key]['t'], t__)
-        # self.meteors[key]['x'].append(x__)
-        # self.meteors[key]['y'].append(y__)
-        # self.meteors[key]['t'].append(t__)
 
     def size_filter(self):
         """Filter clusters based on their size."""
@@ -209,25 +196,28 @@ class MeteorDetect(object):
     def join_candidates(self):
         """Join clusters that are clearly from the same event."""
         valid = self.meteors.copy()
+
         num = len(valid)
         if num <= 1:
             return
         self.meteors = {}
-        v_x, v_y, v_t = None, None, None
+
         LOGGER.debug("Joining %d clusters", num)
+
+        # Collect data from all the clusters to single vectors
+        v_x, v_y, v_t = [], [], []
         for key in valid:
-            if v_x is None:
-                v_t = valid[key]['t']
-                v_x = valid[key]['x']
-                v_y = valid[key]['y']
-            else:
-                v_t = np.append(v_t, valid[key]['t'])
-                v_x = np.append(v_x, valid[key]['x'])
-                v_y = np.append(v_y, valid[key]['y'])
+            v_t.append(valid[key]['t'])
+            v_x.append(valid[key]['x'])
+            v_y.append(valid[key]['y'])
+        # Sort the data based on x-index
+        v_x = np.concatenate(v_x)
         idxs = np.argsort(v_x)
-        v_t = v_t[idxs]
         v_x = v_x[idxs]
-        v_y = v_y[idxs]
+        v_t = np.concatenate(v_t)[idxs]
+        v_y = np.concatenate(v_y)[idxs]
+
+        # Re-cluster the data
         for i in range(v_t.size):
             self._add_to_cluster(v_x[i], v_y[i], v_t[i])
 

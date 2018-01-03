@@ -25,7 +25,8 @@ AVE_MAX_RATIO_LIMIT = 0.5
 DIST_LIMIT = 25
 SIZE_LIMIT = 16
 TRAVEL_LIMIT = 5
-DURATION_LIMIT = 10
+DURATION_LIMIT_MIN = 0.1
+DURATION_LIMIT_MAX = 10
 SPEED_LIMIT = 19
 MIN_TIME_DIFF = 100
 
@@ -99,8 +100,8 @@ class MeteorDetect(object):
         self.save_dir = save_dir
 
         self.create()
-        self.size_filter()
         self.join_candidates()
+        self.size_filter()
         self.speed_filter()
 
     def get_candidates(self):
@@ -164,19 +165,13 @@ class MeteorDetect(object):
         LOGGER.debug("Filter clusters based on size")
         clusters = self.meteors
         valid = {}
-        removed = {}
         for key in clusters:
             if len(clusters[key]['x']) > SIZE_LIMIT:
                 valid[key] = {}
                 for itm in clusters[key]:
                     valid[key][itm] = clusters[key][itm]
-            else:
-                removed[key] = {}
-                for itm in clusters[key]:
-                    removed[key][itm] = clusters[key][itm]
 
         self.meteors = valid
-        self.removed = removed
 
     def speed_filter(self):
         """Apply speed filtering."""
@@ -198,8 +193,8 @@ class MeteorDetect(object):
             speed = distance / duration
 
             # print(distance, duration, speed)
-            if (distance > TRAVEL_LIMIT and duration < DURATION_LIMIT and
-                    speed > SPEED_LIMIT):
+            if (distance > TRAVEL_LIMIT and duration < DURATION_LIMIT_MAX and
+                    duration > DURATION_LIMIT_MIN and speed > SPEED_LIMIT):
                 out[key] = {}
                 for itm in clusters[key]:
                     out[key][itm] = clusters[key][itm]
@@ -213,39 +208,30 @@ class MeteorDetect(object):
 
     def join_candidates(self):
         """Join clusters that are clearly from the same event."""
-        valid = self.meteors
-        removed = self.removed
-        LOGGER.debug("Join %d clusters", len(removed))
-        num_added = 0
-        for key in removed:
-            r_t = np.array(removed[key]['t'])
-            r_x = removed[key]['x']
-            r_y = removed[key]['y']
-
-            for key in valid:
+        valid = self.meteors.copy()
+        num = len(valid)
+        if num <= 1:
+            return
+        self.meteors = {}
+        v_x, v_y, v_t = None, None, None
+        LOGGER.debug("Joining %d clusters", num)
+        for key in valid:
+            if v_x is None:
                 v_t = valid[key]['t']
-                # v_t_min = np.min(v_t)
-                # v_t_max = np.max(v_t)
                 v_x = valid[key]['x']
                 v_y = valid[key]['y']
+            else:
+                v_t = np.append(v_t, valid[key]['t'])
+                v_x = np.append(v_x, valid[key]['x'])
+                v_y = np.append(v_y, valid[key]['y'])
+        idxs = np.argsort(v_x)
+        v_t = v_t[idxs]
+        v_x = v_x[idxs]
+        v_y = v_y[idxs]
+        for i in range(v_t.size):
+            self._add_to_cluster(v_x[i], v_y[i], v_t[i])
 
-                for i in range(len(r_t)):
-                    if r_t[i] == BIG_NUMBER:
-                        continue
-                    if np.min(np.abs(v_t - r_t[i])) > MIN_TIME_DIFF:
-                        continue
-                    dists = (v_x - r_x[i])**2 + (v_y - r_y[i])**2
-                    if np.min(dists) < DIST_LIMIT:
-                        self.__add(key, r_x[i], r_y[i], r_t[i])
-                        # print "added to", key
-                        r_t[i] = BIG_NUMBER
-                        added_new = True
-                        num_added += 1
-
-                # if not added_new:
-                #         break
-
-        LOGGER.debug("Joined %d pixels to other clusters", num_added)
+        LOGGER.debug("Joined %d clusters", num - len(self.meteors))
 
     def print_meteors(self):
         """Print meteor data"""
@@ -354,4 +340,5 @@ def cron_main():
 
 
 if __name__ == "__main__":
+    # manual_main()
     cron_main()

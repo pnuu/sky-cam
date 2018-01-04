@@ -120,6 +120,8 @@ class MeteorDetect(object):
     def create(self):
         """Create initial clusters"""
         LOGGER.debug("Segment image")
+        if self.candidates.sum() < SIZE_LIMIT:
+            return
         closed = closing(self.candidates, square(DIST_LIMIT))
         cleaned = remove_small_objects(closed, min_size=SIZE_LIMIT)
         labels, num = label(cleaned, background=0, return_num=True)

@@ -39,7 +39,7 @@ SAVE_DIR = "/tmp/"
 
 def read_max(fname):
     """Read max image"""
-    img = np.array(Image.open(fname))
+    img = np.array(Image.open(fname), dtype=np.float32)
     if len(img.shape) == 3:
         img = np.mean(img, 2)
 
@@ -48,7 +48,7 @@ def read_max(fname):
 
 def read_ave(fname):
     """Read sum image and return average."""
-    img = np.array(Image.open(fname), dtype=np.float)
+    img = np.array(Image.open(fname), dtype=np.float32)
 
     r__ = img[:, :, 0]
     g__ = img[:, :, 1]

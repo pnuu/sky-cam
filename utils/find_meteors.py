@@ -9,6 +9,10 @@ import logging
 from PIL import Image
 import numpy as np
 
+from skimage.measure import label
+from skimage.morphology import closing, square, remove_small_objects
+from skimage.color import label2rgb
+
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 LOGGER = logging.getLogger('find_meteors')
@@ -22,7 +26,7 @@ TODO:
 
 BIG_NUMBER = int(1e18)
 AVE_MAX_RATIO_LIMIT = 0.5
-DIST_LIMIT = 25
+DIST_LIMIT = 5
 SIZE_LIMIT = 16
 TRAVEL_LIMIT = 5
 DURATION_LIMIT_MIN = 0.1
@@ -85,7 +89,6 @@ class MeteorDetect(object):
     def __init__(self, max_fname, ave_fname, time_fname,
                  mask=None, save_dir=SAVE_DIR):
         self.meteors = {}
-        self.removed = {}
         self.img_max = read_max(max_fname)
         self.img_ave = read_ave(ave_fname)
         self.times, self.start_time = read_time(time_fname)
@@ -100,8 +103,6 @@ class MeteorDetect(object):
         self.save_dir = save_dir
 
         self.create()
-        self.join_candidates()
-        self.size_filter()
         self.speed_filter()
 
     def get_candidates(self):
@@ -113,52 +114,19 @@ class MeteorDetect(object):
             ratio = self.img_ave / self.img_max
 
         candidates = ratio < AVE_MAX_RATIO_LIMIT
-        if candidates.sum() > 3000:
-            candidates = ratio < np.mean(ratio) / 2.
 
         return candidates
 
     def create(self):
         """Create initial clusters"""
-        LOGGER.debug("Create clusters")
-        y_idxs, x_idxs = np.where(self.candidates)
-        t_s = self.times[y_idxs, x_idxs]
-        for y__, x__, t__ in zip(y_idxs, x_idxs, t_s):
-            self._add_to_cluster(x__, y__, t__)
-
-    def _add_to_cluster(self, x__, y__, t__):
-        """Add points to a cluster"""
-        clusters = self.meteors
-        count = len(clusters)
-        for key in clusters:
-            x_idxs = clusters[key]['x']
-            y_idxs = clusters[key]['y']
-            t_idxs = clusters[key]['t']
-
-            dists = (x_idxs - x__)**2 + (y_idxs - y__)**2
-            min_dist = np.min(dists)
-            if min_dist < DIST_LIMIT:
-                clusters[key]['x'] = np.append(x_idxs, x__)
-                clusters[key]['y'] = np.append(y_idxs, y__)
-                clusters[key]['t'] = np.append(t_idxs, t__)
-                return
-
-        self.meteors[count] = {'x': np.array([x__]),
-                               'y': np.array([y__]),
-                               't': np.array([t__])}
-
-    def size_filter(self):
-        """Filter clusters based on their size."""
-        LOGGER.debug("Filter clusters based on size")
-        clusters = self.meteors
-        valid = {}
-        for key in clusters:
-            if len(clusters[key]['x']) > SIZE_LIMIT:
-                valid[key] = {}
-                for itm in clusters[key]:
-                    valid[key][itm] = clusters[key][itm]
-
-        self.meteors = valid
+        LOGGER.debug("Segment image")
+        closed = closing(self.candidates, square(DIST_LIMIT))
+        cleaned = remove_small_objects(closed, min_size=SIZE_LIMIT)
+        labels, num = label(cleaned, background=0, return_num=True)
+        for i in range(1, num + 1):
+            y_idxs, x_idxs = np.where(labels == i)
+            times = self.times[y_idxs, x_idxs]
+            self.meteors[i] = {'x': x_idxs, 'y': y_idxs, 't': times}
 
     def speed_filter(self):
         """Apply speed filtering."""
@@ -179,7 +147,7 @@ class MeteorDetect(object):
             duration = .001 * (max_t - min_t)
             speed = distance / duration
 
-            # print(distance, duration, speed)
+            # TODO: add transient category
             if (distance > TRAVEL_LIMIT and duration < DURATION_LIMIT_MAX and
                     duration > DURATION_LIMIT_MIN and speed > SPEED_LIMIT):
                 out[key] = {}
@@ -192,36 +160,6 @@ class MeteorDetect(object):
         """Extend clusters based on times at the beginning and end of
         automatic detection."""
         pass
-
-    def join_candidates(self):
-        """Join clusters that are clearly from the same event."""
-        valid = self.meteors.copy()
-
-        num = len(valid)
-        if num <= 1:
-            return
-        self.meteors = {}
-
-        LOGGER.debug("Joining %d clusters", num)
-
-        # Collect data from all the clusters to single vectors
-        v_x, v_y, v_t = [], [], []
-        for key in valid:
-            v_t.append(valid[key]['t'])
-            v_x.append(valid[key]['x'])
-            v_y.append(valid[key]['y'])
-        # Sort the data based on x-index
-        v_x = np.concatenate(v_x)
-        idxs = np.argsort(v_x)
-        v_x = v_x[idxs]
-        v_t = np.concatenate(v_t)[idxs]
-        v_y = np.concatenate(v_y)[idxs]
-
-        # Re-cluster the data
-        for i in range(v_t.size):
-            self._add_to_cluster(v_x[i], v_y[i], v_t[i])
-
-        LOGGER.debug("Joined %d clusters", num - len(self.meteors))
 
     def print_meteors(self):
         """Print meteor data"""

@@ -39,22 +39,24 @@ SAVE_DIR = "/tmp/"
 
 def read_max(fname):
     """Read max image"""
-    img = np.array(Image.open(fname), dtype=np.float32)
+    img = np.array(Image.open(fname))
     if len(img.shape) == 3:
         img = np.mean(img, 2)
+    else:
+        img = 1.0 * img
 
     return img
 
 
 def read_ave(fname):
     """Read sum image and return average."""
-    img = np.array(Image.open(fname), dtype=np.float32)
+    img = np.array(Image.open(fname))
 
     r__ = img[:, :, 0]
     g__ = img[:, :, 1]
     b__ = img[:, :, 2]
 
-    avg = r__ * 2**16 + g__ * 2**8 + b__
+    avg = 1.0 * r__ * 2**16 + g__ * 2**8 + b__
     avg /= avg[0, 0]
 
     return avg
@@ -63,18 +65,18 @@ def read_ave(fname):
 def read_time(fname):
     """Convert time image to milliseconds.  Return also start time as
     datetime"""
-    img = np.array(Image.open(fname), dtype=np.float32)
+    img = np.array(Image.open(fname))
     r__ = img[:, :, 0]
     g__ = img[:, :, 1]
     b__ = img[:, :, 2]
 
     start_time = 2**16 * (r__[0][0] * 2**16 + g__[0][0] * 2**8 + b__[0][0]) + \
         (r__[0][1] * 2**16 + g__[0][1] * 2**8 + b__[0][1]) + \
-        (r__[0][2] * 2**16 + g__[0][2] * 2**8 + b__[0][2]) / 1000.
+        (r__[0][2] * 2**16 + g__[0][2] * 2**8 + b__[0][2]) * 0.001
 
     start_time = dt.datetime.utcfromtimestamp(start_time)
 
-    msec = (r__ * 2**16 + g__ * 2**8 + b__)
+    msec = 1.0 * r__ * 2**16 + g__ * 2**8 + b__
 
     return msec, start_time
 
@@ -88,19 +90,19 @@ class MeteorDetect(object):
 
     def __init__(self, max_fname, ave_fname, time_fname,
                  mask=None, save_dir=SAVE_DIR):
+        self.camera = os.path.basename(max_fname).split('_')[0]
+        self.save_dir = save_dir
+
         self.meteors = {}
+
         self.img_max = read_max(max_fname)
         self.img_ave = read_ave(ave_fname)
         self.times, self.start_time = read_time(time_fname)
-
-        self.camera = os.path.basename(max_fname).split('_')[0]
 
         self.candidates = self.get_candidates()
         if mask is not None:
             self.candidates[mask] = False
         LOGGER.debug("%d candidate pixels found", self.candidates.sum())
-
-        self.save_dir = save_dir
 
         self.create()
         self.speed_filter()

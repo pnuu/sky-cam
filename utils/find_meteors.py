@@ -10,7 +10,7 @@ from PIL import Image
 import numpy as np
 
 from skimage.measure import label
-from skimage.morphology import closing, square, remove_small_objects
+from skimage.morphology import closing, diamond, remove_small_objects
 from skimage.color import label2rgb
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -122,9 +122,12 @@ class MeteorDetect(object):
         LOGGER.debug("Segment image")
         if self.candidates.sum() < SIZE_LIMIT:
             return
-        closed = closing(self.candidates, square(DIST_LIMIT))
-        cleaned = remove_small_objects(closed, min_size=SIZE_LIMIT)
-        labels, num = label(cleaned, background=0, return_num=True)
+        closed = closing(self.candidates, diamond(DIST_LIMIT))
+        cleaned = remove_small_objects(closed, min_size=SIZE_LIMIT,
+                                       connectivity=2)
+        labels, num = label(cleaned, background=0, return_num=True,
+                            connectivity=2)
+
         for i in range(1, num + 1):
             y_idxs, x_idxs = np.where(labels == i)
             times = self.times[y_idxs, x_idxs]

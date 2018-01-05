@@ -26,6 +26,7 @@ TODO:
 
 AVE_MAX_RATIO_LIMIT = 0.5
 DIST_LIMIT = 5
+SELEM = diamond(DIST_LIMIT)
 SIZE_LIMIT = 16
 TRAVEL_LIMIT = 5
 DURATION_LIMIT_MIN = 0.1
@@ -122,7 +123,7 @@ class MeteorDetect(object):
         LOGGER.debug("Segment image")
         if self.candidates.sum() < SIZE_LIMIT:
             return
-        closed = closing(self.candidates, diamond(DIST_LIMIT))
+        closed = closing(self.candidates, selem=SELEM)
         cleaned = remove_small_objects(closed, min_size=SIZE_LIMIT,
                                        connectivity=2)
         labels, num = label(cleaned, background=0, return_num=True,

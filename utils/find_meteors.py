@@ -24,7 +24,6 @@ TODO:
 - add "meteor"/"transient" to the CSV filename
 """
 
-BIG_NUMBER = int(1e18)
 AVE_MAX_RATIO_LIMIT = 0.5
 DIST_LIMIT = 5
 SIZE_LIMIT = 16
@@ -32,7 +31,6 @@ TRAVEL_LIMIT = 5
 DURATION_LIMIT_MIN = 0.1
 DURATION_LIMIT_MAX = 10
 SPEED_LIMIT = 19
-MIN_TIME_DIFF = 100
 
 SAVE_DIR = "/tmp/"
 

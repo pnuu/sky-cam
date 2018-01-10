@@ -31,7 +31,7 @@ SIZE_LIMIT = 16
 TRAVEL_LIMIT = 5
 DURATION_LIMIT_MIN = 0.1
 DURATION_LIMIT_MAX = 10
-SPEED_LIMIT = 19
+SPEED_LIMIT = 16
 
 SAVE_DIR = "/tmp/"
 
@@ -115,6 +115,7 @@ class MeteorDetect(object):
             ratio = self.img_ave / self.img_max
 
         candidates = ratio < AVE_MAX_RATIO_LIMIT
+        # candidates = ratio < np.mean(ratio) / 2.
 
         return candidates
 
@@ -128,6 +129,7 @@ class MeteorDetect(object):
                                        connectivity=2)
         labels, num = label(cleaned, background=0, return_num=True,
                             connectivity=2)
+        expand_in_time(labels, self.times)
 
         for i in range(1, num + 1):
             y_idxs, x_idxs = np.where(labels == i)
@@ -161,11 +163,6 @@ class MeteorDetect(object):
                     out[key][itm] = clusters[key][itm]
 
         self.meteors = out
-
-    def extend_clusters(self):
-        """Extend clusters based on times at the beginning and end of
-        automatic detection."""
-        pass
 
     def print_meteors(self):
         """Print meteor data"""
@@ -223,6 +220,29 @@ class MeteorDetect(object):
         fname = os.path.join(self.save_dir, fname)
         img.save(fname)
         LOGGER.info("Saved preview image: %s", fname)
+
+
+def expand_in_time(meteors, times):
+    """Expand detected meteors in time."""
+    labels = np.unique(meteors)
+    shp = meteors.shape
+    for lbl in labels[1:]:
+        while True:
+            y_idxs, x_idxs = np.where(meteors == lbl)
+            min_t = np.min(times[y_idxs, x_idxs])
+            max_t = np.max(times[y_idxs, x_idxs])
+            num = y_idxs.size
+            added = False
+            for y_i, x_i in zip(y_idxs, x_idxs):
+                tim = times[y_i, x_i]
+                if tim == min_t or tim == max_t:
+                    for y_n in range(max(0, y_i - 3), min(shp[0] - 1, y_i + 4)):
+                        for x_n in range(max(0, x_i - 3), min(shp[1], x_i + 4)):
+                            if np.abs(times[y_n, x_n] - tim) < 0.1:
+                                meteors[y_n, x_n] = lbl
+
+            if (meteors == lbl).sum() == num:
+                break
 
 
 def manual_main():

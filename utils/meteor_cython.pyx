@@ -43,7 +43,7 @@ cpdef void expand_in_time(np.ndarray[DTYPEINT_t, ndim=2] meteors,
 		                     int_min(y__ - 1, y_i + 4)):
                         for x_n in range(int_max(0, x_i - 3),
 			                 int_min(x__, x_i + 4)):
-                            if float64_abs(times[y_n, x_n] - tim) < 0.1:
+                            if float64_abs(times[y_n, x_n] - tim) < 100.:
                                 meteors[y_n, x_n] = lbl
 
             num2 = 0

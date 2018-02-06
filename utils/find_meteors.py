@@ -276,5 +276,5 @@ def cron_main():
 
 
 if __name__ == "__main__":
-    # manual_main()
-    cron_main()
+    manual_main()
+    # cron_main()

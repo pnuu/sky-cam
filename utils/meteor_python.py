@@ -14,12 +14,19 @@ def expand_in_time(meteors, times):
 
             for y_i, x_i in zip(y_idxs, x_idxs):
                 tim = times[y_i, x_i]
+<<<<<<< HEAD
                 if tim <= min_t or tim >= max_t:
                     for y_n in range(max(0, y_i - 3),
                                      min(shp[0] - 1, y_i + 4)):
                         for x_n in range(max(0, x_i - 3),
                                          min(shp[1] - 1, x_i + 4)):
                             if np.abs(times[y_n, x_n] - tim) < 100:
+=======
+                if tim == min_t or tim == max_t:
+                    for y_n in range(max(0, y_i - 3), min(shp[0] - 1, y_i + 4)):
+                        for x_n in range(max(0, x_i - 3), min(shp[1], x_i + 4)):
+                            if np.abs(times[y_n, x_n] - tim) < 100.:
+>>>>>>> 9fbeb1f8fd7aca497760c3dbc4795e7616cc6ffb
                                 meteors[y_n, x_n] = lbl
 
             if (meteors == lbl).sum() == num:

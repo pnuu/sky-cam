@@ -109,7 +109,7 @@ class MeteorDetect(object):
         LOGGER.debug("%d candidate pixels found", self.candidates.sum())
 
         self.create()
-        self.speed_filter()
+        # self.speed_filter()
 
     def get_candidates(self):
         """Find meteor candidates."""
@@ -183,6 +183,7 @@ class MeteorDetect(object):
     def save_meteors(self):
         """Save meteors"""
         for key in self.meteors:
+            self._filter_time_outliers(key)
             start_time, times = self._get_meteor_times(key)
             out_fname = "%s_%s.csv" % (self.camera, start_time)
             out_fname = os.path.join(self.save_dir, out_fname)
@@ -196,6 +197,34 @@ class MeteorDetect(object):
                 fid.write("# Time since start [s], x, y\n")
                 for i in range(times.size):
                     fid.write("%.3f,%d,%d\n" % (times[i], x__[i], y__[i]))
+
+    def _filter_time_outliers(self, key):
+        """Filter outliers based on time"""
+        times = self.meteors[key]['t'].copy()
+        idxs = np.argsort(times)
+        times = times[idxs]
+        mid_idx = int(times.size / 2)
+        i = mid_idx
+        while i > 0:
+            if times[i] - times[i - 1] < 200.:
+                i -= 1
+            else:
+                break
+        start_idx = i
+        i = mid_idx
+        while i < times.size - 1:
+            if times[i + 1] - times[i] < 200.:
+                i += 1
+            else:
+                break
+        end_idx = i
+        if start_idx > 0 or end_idx < times.size - 1:
+            times = times[start_idx:end_idx + 1]
+            x__ = self.meteors[key]['x'][idxs][start_idx:end_idx + 1]
+            y__ = self.meteors[key]['y'][idxs][start_idx:end_idx + 1]
+            self.meteors[key]['t'] = times
+            self.meteors[key]['x'] = x__
+            self.meteors[key]['y'] = y__
 
     def _get_meteor_times(self, key):
         """Get start and relative times for meteors"""
@@ -220,7 +249,7 @@ class MeteorDetect(object):
 
         img *= 255
         img = Image.fromarray(img.astype(np.uint8))
-        fname = "%s_%s.jpg" % (self.camera,
+        fname = "%s_%s.png" % (self.camera,
                                self.start_time.strftime("%Y%m%d_%H%M%S.%f"))
         fname = os.path.join(self.save_dir, fname)
         img.save(fname)

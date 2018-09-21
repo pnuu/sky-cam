@@ -13,10 +13,10 @@ from skimage.measure import label
 from skimage.morphology import closing, diamond, remove_small_objects
 from skimage.color import label2rgb
 
-try:
-    from meteor_cython import expand_in_time
-except ImportError:
-    from meteor_python import expand_in_time
+# try:
+#    from meteor_cython import expand_in_time
+# except ImportError:
+from meteor_python import expand_in_time
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 
@@ -134,11 +134,34 @@ class MeteorDetect(object):
                                        connectivity=2)
         labels, num = label(cleaned, background=0, return_num=True,
                             connectivity=2)
-        expand_in_time(labels, self.times)
 
         for i in range(1, num + 1):
             y_idxs, x_idxs = np.where(labels == i)
             times = self.times[y_idxs, x_idxs]
+            # Sort the data based on time
+            idxs = np.argsort(times)
+            times = times[idxs]
+            x_idxs = x_idxs[idxs]
+            y_idxs = y_idxs[idxs]
+            # Remove outliers
+            while True:
+                diff = np.diff(times)
+                idxs = np.where(np.abs(diff) > 150.)
+                idxs = idxs[0]
+                if idxs.size == 0:
+                    break
+                if idxs[0] < times.size / 2:
+                    times = times[idxs[0] + 1:]
+                    x_idxs = x_idxs[idxs[0] + 1:]
+                    y_idxs = y_idxs[idxs[0] + 1:]
+                else:
+                    times = times[:idxs[0]]
+                    x_idxs = x_idxs[:idxs[0]]
+                    y_idxs = y_idxs[:idxs[0]]
+
+            x_idxs, y_idxs = expand_in_time(x_idxs, y_idxs, self.times)
+            times = self.times[y_idxs, x_idxs]
+
             self.meteors[i] = {'x': x_idxs, 'y': y_idxs, 't': times}
 
     def speed_filter(self):
@@ -187,10 +210,13 @@ class MeteorDetect(object):
             start_time, times = self._get_meteor_times(key)
             out_fname = "%s_%s.csv" % (self.camera, start_time)
             out_fname = os.path.join(self.save_dir, out_fname)
+
+            # Sort the data based on time
             idxs = np.argsort(times)
             times = times[idxs]
             x__ = self.meteors[key]['x'][idxs]
             y__ = self.meteors[key]['y'][idxs]
+
             LOGGER.info("Saving meteor: %s", out_fname)
             with open(out_fname, 'w') as fid:
                 fid.write("# Start time: %s\n" % start_time)

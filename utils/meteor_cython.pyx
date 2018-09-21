@@ -18,7 +18,7 @@ cpdef void expand_in_time(np.ndarray[DTYPEINT_t, ndim=2] meteors,
     cdef np.ndarray[DTYPEINT_t, ndim=1] labels = np.unique(meteors)
     cdef int lbl
     cdef int num, num2
-    cdef int y_i, x_i, y_n, x_n
+    cdef int y_i, x_i, y_n, x_n, y_start, y_end, x_start, x_end
     cdef int i, j
     cdef int y__, x__
     cdef double tim, min_t, max_t
@@ -37,13 +37,16 @@ cpdef void expand_in_time(np.ndarray[DTYPEINT_t, ndim=2] meteors,
             for i in range(num):
                 y_i = y_idxs[i]
                 x_i = x_idxs[i]
+                y_start = int_max(0, y_i - 3)
+                y_end = int_min(y__ - 1, y_i + 4)
+                x_start = int_max(0, x_i - 3)
+                x_end = int_min(x__ - 1, x_i + 4)
                 tim = times[y_i, x_i]
-                if tim == min_t or tim == max_t:
-                    for y_n in range(int_max(0, y_i - 3),
-                                     int_min(y__ - 1, y_i + 4)):
-                        for x_n in range(int_max(0, x_i - 3),
-                                         int_min(x__, x_i + 4)):
-                            if float64_abs(times[y_n, x_n] - tim) < 100.:
+
+                if tim <= min_t or tim => max_t:
+                    for y_n in range(y_start, y_end):
+                        for x_n in range(x_start, x_end):
+                            if float64_abs(times[y_n, x_n] - tim) < 100:
                                 meteors[y_n, x_n] = lbl
 
             num2 = 0
@@ -93,11 +96,14 @@ cdef tuple own_where(np.ndarray[DTYPEINT_t, ndim=2] arr, int lbl):
     cdef list y_idxs = [], x_idxs = []
     cdef int x_size, y_size
 
+    y_append = y_idxs.append
+    x_append = x_idxs.append
+
     y_size = arr.shape[0]
     x_size = arr.shape[1]
     for i in range(y_size):
         for j in range(x_size):
             if arr[i, j] == lbl:
-                y_idxs.append(i)
-                x_idxs.append(j)
+                y_append(i)
+                x_append(j)
     return y_idxs, x_idxs

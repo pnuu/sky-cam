@@ -47,7 +47,7 @@
 #define STACK_LOG_NAME 10
 #define STACK_LOG_DATA 11
 
-#define N_MMAP_BUFFERS 2
+#define N_MMAP_BUFFERS 8
 
 #define STACKS_CLEARED -1
 

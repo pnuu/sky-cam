@@ -31,7 +31,7 @@ TODO:
 
 AVE_MAX_RATIO_LIMIT = 0.5
 DIST_LIMIT = 5
-SELEM = diamond(DIST_LIMIT)
+FOOTPRINT = diamond(DIST_LIMIT)
 SIZE_LIMIT = 16
 TRAVEL_LIMIT = 5
 DURATION_LIMIT_MIN = 0.1
@@ -54,7 +54,7 @@ def read_max(fname):
 
 def read_ave(fname):
     """Read sum image and return average."""
-    img = np.array(Image.open(fname))
+    img = np.array(Image.open(fname)).astype(np.float32)
 
     r__ = img[:, :, 0]
     g__ = img[:, :, 1]
@@ -69,7 +69,7 @@ def read_ave(fname):
 def read_time(fname):
     """Convert time image to milliseconds.  Return also start time as
     datetime"""
-    img = np.array(Image.open(fname))
+    img = np.array(Image.open(fname)).astype(np.int32)
     r__ = img[:, :, 0]
     g__ = img[:, :, 1]
     b__ = img[:, :, 2]
@@ -129,7 +129,7 @@ class MeteorDetect(object):
         LOGGER.debug("Segment image")
         if self.candidates.sum() < SIZE_LIMIT:
             return
-        closed = closing(self.candidates, selem=SELEM)
+        closed = closing(self.candidates, footprint=FOOTPRINT)
         cleaned = remove_small_objects(closed, min_size=SIZE_LIMIT,
                                        connectivity=2)
         labels, num = label(cleaned, background=0, return_num=True,

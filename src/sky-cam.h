@@ -41,6 +41,32 @@ static void mainloop(int fd, int delay_start, int delay_between_frames,
                      struct stacks *stacks2, struct v4l2_format fmt);
 static int read_frame(int fd, struct buffer *mmap_buffers,
                       struct frame *current_frame, struct v4l2_format fmt);
+static void process_frame_grey(unsigned char *p, unsigned char *cur_Y,
+                               unsigned long sizeimage);
+static void process_frame_yuv_single_chan(unsigned char *p,
+                                          unsigned char *cur_Y,
+                                          unsigned long sizeimage,
+                                          int offsets[]);
+static void process_frame_uyvy_single_chan(unsigned char *p,
+                                           unsigned char *cur_Y,
+                                           unsigned long sizeimage);
+static void process_frame_yuyv_single_chan(unsigned char *p,
+                                           unsigned char *cur_Y,
+                                           unsigned long sizeimage);
+static void process_frame_yuv_three_chans(
+    unsigned char *p, unsigned char *cur_Y, unsigned char *cur_Cb,
+    unsigned char *cur_Cr, unsigned long sizeimage, int offsets[]);
+static void process_frame_uyvy_three_chans(unsigned char *p,
+                                           unsigned char *cur_Y,
+                                           unsigned char *cur_Cb,
+                                           unsigned char *cur_Cr,
+                                           unsigned long sizeimage);
+static void process_frame_yuyv_three_chans(unsigned char *p,
+                                           unsigned char *cur_Y,
+                                           unsigned char *cur_Cb,
+                                           unsigned char *cur_Cr,
+                                           unsigned long sizeimage);
+
 static int process_frame(unsigned char *p, struct timeb tmb,
                          struct frame *current_frame, struct v4l2_format fmt);
 static void process_stack(struct frame *current_frame, struct stacks *stacks);

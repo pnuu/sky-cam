@@ -387,10 +387,72 @@ static int read_frame(int fd, struct buffer *mmap_buffers,
     return -1;
 }
 
+static void process_frame_grey(unsigned char *p, unsigned char *cur_Y,
+                               unsigned long sizeimage) {
+    int i, j;
+    for (i = 0, j = 0; i < sizeimage; i += 4, j += 2) {
+        cur_Y[j + 0] = p[j];
+        cur_Y[j + 1] = p[j + 2];
+    }
+}
+
+static void process_frame_yuv_single_chan(unsigned char *p,
+                                          unsigned char *cur_Y,
+                                          unsigned long sizeimage,
+                                          int offsets[]) {
+    int i, j;
+    for (i = 0, j = 0; i < sizeimage; i += 4, j += 2) {
+        cur_Y[j + 0] = p[i + offsets[0]];
+        cur_Y[j + 1] = p[i + offsets[1]];
+    }
+}
+
+static void process_frame_uyvy_single_chan(unsigned char *p,
+                                           unsigned char *cur_Y,
+                                           unsigned long sizeimage) {
+    int offsets[] = {1, 3};
+    process_frame_yuv_single_chan(p, cur_Y, sizeimage, offsets);
+}
+
+static void process_frame_yuyv_single_chan(unsigned char *p,
+                                           unsigned char *cur_Y,
+                                           unsigned long sizeimage) {
+    int offsets[] = {0, 2};
+    process_frame_yuv_single_chan(p, cur_Y, sizeimage, offsets);
+}
+
+static void process_frame_yuv_three_chans(
+    unsigned char *p, unsigned char *cur_Y, unsigned char *cur_Cb,
+    unsigned char *cur_Cr, unsigned long sizeimage, int offsets[]) {
+    int i, j, k;
+    for (i = 0, j = 0, k = 0; i < sizeimage; i += 4, j += 2, k++) {
+        cur_Y[j + 0] = p[i + offsets[0]];
+        cur_Y[j + 1] = p[i + offsets[1]];
+        cur_Cb[k] = p[i + offsets[2]];
+        cur_Cr[k] = p[i + offsets[3]];
+    }
+}
+
+static void process_frame_uyvy_three_chans(unsigned char *p,
+                                           unsigned char *cur_Y,
+                                           unsigned char *cur_Cb,
+                                           unsigned char *cur_Cr,
+                                           unsigned long sizeimage) {
+    int offsets[] = {1, 3, 0, 2};
+    process_frame_yuv_three_chans(p, cur_Y, cur_Cb, cur_Cr, sizeimage, offsets);
+}
+
+static void process_frame_yuyv_three_chans(unsigned char *p,
+                                           unsigned char *cur_Y,
+                                           unsigned char *cur_Cb,
+                                           unsigned char *cur_Cr,
+                                           unsigned long sizeimage) {
+    int offsets[] = {0, 2, 1, 3};
+    process_frame_yuv_three_chans(p, cur_Y, cur_Cb, cur_Cr, sizeimage, offsets);
+}
+
 static int process_frame(unsigned char *p, struct timeb tmb,
                          struct frame *current_frame, struct v4l2_format fmt) {
-    int i = 0, j = 0, k = 0;
-
     unsigned char *cur_Y = current_frame->Y;
     unsigned char *cur_Cb = current_frame->Cb;
     unsigned char *cur_Cr = current_frame->Cr;
@@ -410,39 +472,22 @@ static int process_frame(unsigned char *p, struct timeb tmb,
     /* Assume YUYV format. RGB and GREY should be added? */
     switch (pixelformat) {
         case V4L2_PIX_FMT_GREY:
-            for (i = 0, j = 0; i < sizeimage; i += 4, j += 2) {
-                cur_Y[j + 0] = p[j];
-                cur_Y[j + 1] = p[j + 2];
-            }
+            process_frame_grey(p, cur_Y, sizeimage);
             break;
         case V4L2_PIX_FMT_UYVY:
             if (channels == 1) {
-                for (i = 0, j = 0; i < sizeimage; i += 4, j += 2) {
-                    cur_Y[j + 0] = p[i + 1];
-                    cur_Y[j + 1] = p[i + 3];
-                }
+                process_frame_uyvy_single_chan(p, cur_Y, sizeimage);
             } else {  // number_of_channels == 3
-                for (i = 0, j = 0, k = 0; i < sizeimage; i += 4, j += 2, k++) {
-                    cur_Y[j + 0] = p[i + 1];
-                    cur_Y[j + 1] = p[i + 3];
-                    cur_Cb[k] = p[i];
-                    cur_Cr[k] = p[i + 2];
-                }
+                process_frame_uyvy_three_chans(p, cur_Y, cur_Cb, cur_Cr,
+                                               sizeimage);
             }
             break;
         case V4L2_PIX_FMT_YUYV:
             if (channels == 1) {
-                for (i = 0, j = 0; i < sizeimage; i += 4, j += 2) {
-                    cur_Y[j + 0] = p[i];
-                    cur_Y[j + 1] = p[i + 2];
-                }
+                process_frame_yuyv_single_chan(p, cur_Y, sizeimage);
             } else {  // number_of_channels == 3
-                for (i = 0, j = 0, k = 0; i < sizeimage; i += 4, j += 2, k++) {
-                    cur_Y[j + 0] = p[i];
-                    cur_Y[j + 1] = p[i + 2];
-                    cur_Cb[k] = p[i + 1];
-                    cur_Cr[k] = p[i + 3];
-                }
+                process_frame_yuyv_three_chans(p, cur_Y, cur_Cb, cur_Cr,
+                                               sizeimage);
             }
 
         default:

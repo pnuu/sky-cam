@@ -69,6 +69,18 @@ static void process_frame_yuyv_three_chans(unsigned char *p,
 
 static int process_frame(unsigned char *p, struct timeb tmb,
                          struct frame *current_frame, struct v4l2_format fmt);
+
+static void stack_max_latest_time(struct frame *current_frame,
+                                  struct stacks *stacks);
+static void stack_max_latest(struct frame *current_frame,
+                             struct stacks *stacks);
+static void stack_max_time(struct frame *current_frame, struct stacks *stacks);
+static void stack_max(struct frame *current_frame, struct stacks *stacks);
+static void stack_latest(struct frame *current_frame, struct stacks *stacks);
+static void stack_min(struct frame *current_frame, struct stacks *stacks);
+static void stack_ave8(struct frame *current_frame, struct stacks *stacks);
+static void stack_ave24(struct frame *current_frame, struct stacks *stacks);
+
 static void process_stack(struct frame *current_frame, struct stacks *stacks);
 
 #endif

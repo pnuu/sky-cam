@@ -500,7 +500,8 @@ static int process_frame(unsigned char *p, struct timeb tmb,
     }
 }
 
-static void process_stack(struct frame *current_frame, struct stacks *stacks) {
+static void stack_max_latest_time(struct frame *current_frame,
+                                  struct stacks *stacks) {
     int i = 0, j = 0, k = 1;
     unsigned int ms_since_frame_start = 0;
 
@@ -517,6 +518,278 @@ static void process_stack(struct frame *current_frame, struct stacks *stacks) {
 
     int saturation_limit = stacks->saturation_limit;
 
+    unsigned char *M_Y = stacks->max->Y;
+    unsigned char *l_Y = stacks->latest->Y;
+    unsigned int *t_Y = stacks->times->Y;
+    unsigned int *tl_Y = stacks->last_times->Y;
+    ms_since_frame_start = 1000 * difftime(cur_timestamp, stack_timestamp) +
+                           0.001 * (cur_usec - stack_usec);
+
+    unsigned char *M_Cr = stacks->max->Cr;
+    unsigned char *M_Cb = stacks->max->Cb;
+    unsigned char *l_Cr = stacks->latest->Cr;
+    unsigned char *l_Cb = stacks->latest->Cb;
+
+    if (channels == 3) {
+        for (i = 0, j = 0, k = 1; i < n; i += 2, j++, k += 2) {
+            if (cur_Y[i] > M_Y[i]) {
+                M_Y[i] = l_Y[i] = cur_Y[i];
+                t_Y[i] = ms_since_frame_start;
+            }
+            if (cur_Y[i] >= saturation_limit) {
+                tl_Y[i] = ms_since_frame_start;
+            }
+            if (cur_Y[k] > M_Y[k]) {
+                M_Y[k] = l_Y[k] = cur_Y[k];
+                t_Y[k] = ms_since_frame_start;
+                M_Cr[j] = l_Cr[j] = cur_Cr[j];
+                M_Cb[j] = l_Cb[j] = cur_Cb[j];
+            }
+            if (cur_Y[k] >= saturation_limit) {
+                tl_Y[k] = ms_since_frame_start;
+            }
+        }
+    } else {
+        for (i = 0; i < n; i++) {
+            if (cur_Y[i] > M_Y[i]) {
+                t_Y[i] = ms_since_frame_start;
+                M_Y[i] = l_Y[i] = cur_Y[i];
+            }
+            if (cur_Y[i] >= saturation_limit) {
+                tl_Y[i] = ms_since_frame_start;
+            }
+        }
+    }
+}
+
+static void stack_max_latest(struct frame *current_frame,
+                             struct stacks *stacks) {
+    int i = 0, j = 0, k = 1;
+
+    unsigned char *cur_Y = current_frame->Y;
+    unsigned char *cur_Cb = current_frame->Cb;
+    unsigned char *cur_Cr = current_frame->Cr;
+    int n = current_frame->width * current_frame->height;
+    int channels = current_frame->channels;
+
+    unsigned char *M_Y = stacks->max->Y;
+    unsigned char *l_Y = stacks->latest->Y;
+
+    if (channels == 3) {
+        unsigned char *M_Cr = stacks->max->Cr;
+        unsigned char *M_Cb = stacks->max->Cb;
+        unsigned char *l_Cr = stacks->max->Cr;
+        unsigned char *l_Cb = stacks->max->Cb;
+        for (i = 0, j = 0, k = 1; i < n; i += 2, j++, k += 2) {
+            if (cur_Y[i] > M_Y[i]) {
+                M_Y[i] = l_Y[i] = cur_Y[i];
+                M_Cr[j] = l_Cr[j] = cur_Cr[j];
+                M_Cb[j] = l_Cb[j] = cur_Cb[j];
+            }
+            if (cur_Y[k] > M_Y[k]) {
+                M_Y[k] = l_Y[k] = cur_Y[k];
+                M_Cr[j] = l_Cr[j] = cur_Cr[j];
+                M_Cb[j] = l_Cb[j] = cur_Cb[j];
+            }
+        }
+    } else {
+        for (i = 0; i < n; i++) {
+            if (cur_Y[i] > M_Y[i]) {
+                M_Y[i] = l_Y[i] = cur_Y[i];
+            }
+        }
+    }
+}
+
+static void stack_max_time(struct frame *current_frame, struct stacks *stacks) {
+    int i = 0, j = 0, k = 1;
+    unsigned int ms_since_frame_start = 0;
+    unsigned char *cur_Y = current_frame->Y;
+    unsigned char *cur_Cb = current_frame->Cb;
+    unsigned char *cur_Cr = current_frame->Cr;
+    int n = current_frame->width * current_frame->height;
+    int channels = current_frame->channels;
+    time_t cur_timestamp = current_frame->timestamp;
+    long cur_usec = current_frame->usec;
+
+    time_t stack_timestamp = stacks->timestamp;
+    long stack_usec = stacks->usec;
+
+    int saturation_limit = stacks->saturation_limit;
+
+    unsigned char *M_Y = stacks->max->Y;
+    unsigned int *t_Y = stacks->times->Y;
+    unsigned int *tl_Y = stacks->last_times->Y;
+    ms_since_frame_start = 1000 * difftime(cur_timestamp, stack_timestamp) +
+                           0.001 * (cur_usec - stack_usec);
+    if (channels == 3) {
+        unsigned char *M_Cr = stacks->max->Cr;
+        unsigned char *M_Cb = stacks->max->Cb;
+        for (i = 0, j = 0, k = 1; i < n; i += 2, j++, k += 2) {
+            if (cur_Y[i] > M_Y[i]) {
+                M_Y[i] = cur_Y[i];
+                t_Y[i] = ms_since_frame_start;
+            }
+            if (cur_Y[i] >= saturation_limit) {
+                tl_Y[i] = ms_since_frame_start;
+            }
+            if (cur_Y[k] > M_Y[k]) {
+                M_Y[k] = cur_Y[k];
+                t_Y[k] = ms_since_frame_start;
+                M_Cr[j] = cur_Cr[j];
+                M_Cb[j] = cur_Cb[j];
+            }
+            if (cur_Y[k] >= saturation_limit) {
+                tl_Y[k] = ms_since_frame_start;
+            }
+        }
+    } else {
+        for (i = 0; i < n; i++) {
+            if (cur_Y[i] > M_Y[i]) {
+                M_Y[i] = cur_Y[i];
+                t_Y[i] = ms_since_frame_start;
+            }
+            if (cur_Y[i] >= saturation_limit) {
+                tl_Y[i] = ms_since_frame_start;
+            }
+        }
+    }
+}
+
+static void stack_max(struct frame *current_frame, struct stacks *stacks) {
+    int i = 0, j = 0, k = 1;
+    unsigned char *cur_Y = current_frame->Y;
+    unsigned char *cur_Cb = current_frame->Cb;
+    unsigned char *cur_Cr = current_frame->Cr;
+    int n = current_frame->width * current_frame->height;
+    int channels = current_frame->channels;
+
+    unsigned char *M_Y = stacks->max->Y;
+
+    if (channels == 3) {
+        unsigned char *M_Cr = stacks->max->Cr;
+        unsigned char *M_Cb = stacks->max->Cb;
+        for (i = 0, j = 0, k = 1; i < n; i += 2, j++, k += 2) {
+            if (cur_Y[i] > M_Y[i]) {
+                M_Y[i] = cur_Y[i];
+            }
+            if (cur_Y[k] > M_Y[k]) {
+                M_Y[k] = cur_Y[k];
+                M_Cr[j] = cur_Cr[j];
+                M_Cb[j] = cur_Cb[j];
+            }
+        }
+    } else {
+        for (i = 0; i < n; i++) {
+            if (cur_Y[i] > M_Y[i]) {
+                M_Y[i] = cur_Y[i];
+            }
+        }
+    }
+}
+
+void static stack_latest(struct frame *current_frame, struct stacks *stacks) {
+    int i = 0, j = 0, k = 1;
+
+    unsigned char *cur_Y = current_frame->Y;
+    unsigned char *cur_Cb = current_frame->Cb;
+    unsigned char *cur_Cr = current_frame->Cr;
+    int n = current_frame->width * current_frame->height;
+    int channels = current_frame->channels;
+
+    unsigned char *l_Y = stacks->latest->Y;
+
+    if (channels == 3) {
+        unsigned char *l_Cr = stacks->latest->Cr;
+        unsigned char *l_Cb = stacks->latest->Cb;
+        for (i = 0, j = 0, k = 1; i < n; i += 2, j++, k += 2) {
+            if (cur_Y[i] > l_Y[i]) {
+                l_Y[i] = cur_Y[i];
+            }
+            if (cur_Y[k] > l_Y[k]) {
+                l_Y[k] = cur_Y[k];
+                l_Cr[j] = cur_Cr[j];
+                l_Cb[j] = cur_Cb[j];
+            }
+        }
+    } else {
+        for (i = 0; i < n; i++) {
+            if (cur_Y[i] > l_Y[i]) {
+                l_Y[i] = cur_Y[i];
+            }
+        }
+    }
+}
+
+void static stack_min(struct frame *current_frame, struct stacks *stacks) {
+    int i = 0, j = 0, k = 1;
+    unsigned char *cur_Y = current_frame->Y;
+    unsigned char *cur_Cb = current_frame->Cb;
+    unsigned char *cur_Cr = current_frame->Cr;
+    int n = current_frame->width * current_frame->height;
+    int channels = current_frame->channels;
+    unsigned char *m_Y = stacks->min->Y;
+    if (channels == 3) {
+        unsigned char *m_Cr = stacks->min->Cr;
+        unsigned char *m_Cb = stacks->min->Cb;
+        for (i = 0, j = 0, k = 1; i < n; i += 2, j++, k += 2) {
+            if (cur_Y[i] < m_Y[i]) {
+                m_Y[i] = cur_Y[i];
+            }
+            if (cur_Y[k] < m_Y[k]) {
+                m_Y[k] = cur_Y[k];
+                m_Cr[j] = cur_Cr[j];
+                m_Cb[j] = cur_Cb[j];
+            }
+        }
+    } else {
+        for (i = 0; i < n; i++) {
+            if (cur_Y[i] < m_Y[i]) {
+                m_Y[i] = cur_Y[i];
+            }
+        }
+    }
+}
+
+void static stack_ave8(struct frame *current_frame, struct stacks *stacks) {
+    int i = 0, j = 0, k = 1;
+    unsigned char *cur_Y = current_frame->Y;
+    unsigned char *cur_Cb = current_frame->Cb;
+    unsigned char *cur_Cr = current_frame->Cr;
+    int n = current_frame->width * current_frame->height;
+    int channels = current_frame->channels;
+
+    unsigned int *a_Y = stacks->ave8->Y;
+    if (channels == 3) {
+        unsigned int *a_Cr = stacks->ave8->Cr;
+        unsigned int *a_Cb = stacks->ave8->Cb;
+        for (i = 0, j = 0, k = 1; i < n; i += 2, j++, k += 2) {
+            a_Y[i] += cur_Y[i];
+            a_Y[k] += cur_Y[k];
+            a_Cr[j] += cur_Cr[j];
+            a_Cb[j] += cur_Cb[j];
+        }
+    } else {
+        for (i = 0; i < n; i++) {
+            a_Y[i] += cur_Y[i];
+        }
+    }
+}
+
+void static stack_ave24(struct frame *current_frame, struct stacks *stacks) {
+    int i = 0;
+    unsigned char *cur_Y = current_frame->Y;
+    int n = current_frame->width * current_frame->height;
+    unsigned int *A_Y = stacks->ave24->Y;
+    for (i = 0; i < n; i++) {
+        A_Y[i] += cur_Y[i];
+    }
+}
+
+static void process_stack(struct frame *current_frame, struct stacks *stacks) {
+    time_t cur_timestamp = current_frame->timestamp;
+    long cur_usec = current_frame->usec;
+
     stacks->end_timestamp = cur_timestamp;
     stacks->end_usec = cur_usec;
 
@@ -526,227 +799,31 @@ static void process_stack(struct frame *current_frame, struct stacks *stacks) {
         stacks->num_imgs = 0;
     }
 
-    /* Update stacks */
-
     if (stacks->max != NULL && stacks->latest != NULL) {
-        unsigned char *M_Y = stacks->max->Y;
-        unsigned char *l_Y = stacks->latest->Y;
         if (stacks->times != NULL) {
-            /* peak-hold, latest, times*/
-            unsigned int *t_Y = stacks->times->Y;
-            unsigned int *tl_Y = stacks->last_times->Y;
-            ms_since_frame_start =
-                1000 * difftime(cur_timestamp, stack_timestamp) +
-                0.001 * (cur_usec - stack_usec);
-            if (channels == 3) {
-                unsigned char *M_Cr = stacks->max->Cr;
-                unsigned char *M_Cb = stacks->max->Cb;
-                unsigned char *l_Cr = stacks->latest->Cr;
-                unsigned char *l_Cb = stacks->latest->Cb;
-                for (i = 0, j = 0, k = 1; i < n; i += 2, j++, k += 2) {
-                    if (cur_Y[i] > M_Y[i]) {
-                        M_Y[i] = l_Y[i] = cur_Y[i];
-                        t_Y[i] = ms_since_frame_start;
-                    }
-                    if (cur_Y[i] >= saturation_limit) {
-                        tl_Y[i] = ms_since_frame_start;
-                    }
-                    if (cur_Y[k] > M_Y[k]) {
-                        M_Y[k] = l_Y[k] = cur_Y[k];
-                        t_Y[k] = ms_since_frame_start;
-                        M_Cr[j] = l_Cr[j] = cur_Cr[j];
-                        M_Cb[j] = l_Cb[j] = cur_Cb[j];
-                    }
-                    if (cur_Y[k] >= saturation_limit) {
-                        tl_Y[k] = ms_since_frame_start;
-                    }
-                }
-            } else {
-                for (i = 0; i < n; i++) {
-                    if (cur_Y[i] > M_Y[i]) {
-                        t_Y[i] = ms_since_frame_start;
-                        M_Y[i] = l_Y[i] = cur_Y[i];
-                    }
-                    if (cur_Y[i] >= saturation_limit) {
-                        tl_Y[i] = ms_since_frame_start;
-                    }
-                }
-            }
+            stack_max_latest_time(current_frame, stacks);
         } else {
-            /* peak-hold, latest */
-            if (channels == 3) {
-                unsigned char *M_Cr = stacks->max->Cr;
-                unsigned char *M_Cb = stacks->max->Cb;
-                unsigned char *l_Cr = stacks->max->Cr;
-                unsigned char *l_Cb = stacks->max->Cb;
-                for (i = 0, j = 0, k = 1; i < n; i += 2, j++, k += 2) {
-                    if (cur_Y[i] > M_Y[i]) {
-                        M_Y[i] = l_Y[i] = cur_Y[i];
-                        M_Cr[j] = l_Cr[j] = cur_Cr[j];
-                        M_Cb[j] = l_Cb[j] = cur_Cb[j];
-                    }
-                    if (cur_Y[k] > M_Y[k]) {
-                        M_Y[k] = l_Y[k] = cur_Y[k];
-                        M_Cr[j] = l_Cr[j] = cur_Cr[j];
-                        M_Cb[j] = l_Cb[j] = cur_Cb[j];
-                    }
-                }
-            } else {
-                for (i = 0; i < n; i++) {
-                    if (cur_Y[i] > M_Y[i]) {
-                        M_Y[i] = l_Y[i] = cur_Y[i];
-                    }
-                }
-            }
+            stack_max_latest(current_frame, stacks);
         }
     } else if (stacks->max != NULL) {
-        unsigned char *M_Y = stacks->max->Y;
         if (stacks->times != NULL) {
-            /* peak-hold, times */
-            unsigned int *t_Y = stacks->times->Y;
-            unsigned int *tl_Y = stacks->last_times->Y;
-            ms_since_frame_start =
-                1000 * difftime(cur_timestamp, stack_timestamp) +
-                0.001 * (cur_usec - stack_usec);
-            if (channels == 3) {
-                unsigned char *M_Cr = stacks->max->Cr;
-                unsigned char *M_Cb = stacks->max->Cb;
-                for (i = 0, j = 0, k = 1; i < n; i += 2, j++, k += 2) {
-                    if (cur_Y[i] > M_Y[i]) {
-                        M_Y[i] = cur_Y[i];
-                        t_Y[i] = ms_since_frame_start;
-                    }
-                    if (cur_Y[i] >= saturation_limit) {
-                        tl_Y[i] = ms_since_frame_start;
-                    }
-                    if (cur_Y[k] > M_Y[k]) {
-                        M_Y[k] = cur_Y[k];
-                        t_Y[k] = ms_since_frame_start;
-                        M_Cr[j] = cur_Cr[j];
-                        M_Cb[j] = cur_Cb[j];
-                    }
-                    if (cur_Y[k] >= saturation_limit) {
-                        tl_Y[k] = ms_since_frame_start;
-                    }
-                }
-            } else {
-                for (i = 0; i < n; i++) {
-                    if (cur_Y[i] > M_Y[i]) {
-                        M_Y[i] = cur_Y[i];
-                        t_Y[i] = ms_since_frame_start;
-                    }
-                    if (cur_Y[i] >= saturation_limit) {
-                        tl_Y[i] = ms_since_frame_start;
-                    }
-                }
-            }
+            stack_max_time(current_frame, stacks);
         } else {
-            /* peak-hold */
-            if (channels == 3) {
-                unsigned char *M_Cr = stacks->max->Cr;
-                unsigned char *M_Cb = stacks->max->Cb;
-                for (i = 0, j = 0, k = 1; i < n; i += 2, j++, k += 2) {
-                    if (cur_Y[i] > M_Y[i]) {
-                        M_Y[i] = cur_Y[i];
-                    }
-                    if (cur_Y[k] > M_Y[k]) {
-                        M_Y[k] = cur_Y[k];
-                        M_Cr[j] = cur_Cr[j];
-                        M_Cb[j] = cur_Cb[j];
-                    }
-                }
-            } else {
-                for (i = 0; i < n; i++) {
-                    if (cur_Y[i] > M_Y[i]) {
-                        M_Y[i] = cur_Y[i];
-                    }
-                }
-            }
+            stack_max(current_frame, stacks);
         }
     } else if (stacks->latest != NULL) {
-        /* latest */
-        unsigned char *l_Y = stacks->latest->Y;
-        if (channels == 3) {
-            unsigned char *l_Cr = stacks->latest->Cr;
-            unsigned char *l_Cb = stacks->latest->Cb;
-            for (i = 0, j = 0, k = 1; i < n; i += 2, j++, k += 2) {
-                if (cur_Y[i] > l_Y[i]) {
-                    l_Y[i] = cur_Y[i];
-                }
-                if (cur_Y[k] > l_Y[k]) {
-                    l_Y[k] = cur_Y[k];
-                    l_Cr[j] = cur_Cr[j];
-                    l_Cb[j] = cur_Cb[j];
-                }
-            }
-        } else {
-            for (i = 0; i < n; i++) {
-                if (cur_Y[i] > l_Y[i]) {
-                    l_Y[i] = cur_Y[i];
-                }
-            }
-        }
+        stack_latest(current_frame, stacks);
     }
 
     if (stacks->min != NULL) {
-        unsigned char *m_Y = stacks->min->Y;
-        if (channels == 3) {
-            unsigned char *m_Cr = stacks->min->Cr;
-            unsigned char *m_Cb = stacks->min->Cb;
-            for (i = 0, j = 0, k = 1; i < n; i += 2, j++, k += 2) {
-                if (cur_Y[i] < m_Y[i]) {
-                    m_Y[i] = cur_Y[i];
-                }
-                if (cur_Y[k] < m_Y[k]) {
-                    m_Y[k] = cur_Y[k];
-                    m_Cr[j] = cur_Cr[j];
-                    m_Cb[j] = cur_Cb[j];
-                }
-            }
-        } else {
-            for (i = 0; i < n; i++) {
-                if (cur_Y[i] < m_Y[i]) {
-                    m_Y[i] = cur_Y[i];
-                }
-            }
-        }
+        stack_min(current_frame, stacks);
     }
 
     if (stacks->ave8 != NULL) {
-        unsigned int *a_Y = stacks->ave8->Y;
-        if (channels == 3) {
-            unsigned int *a_Cr = stacks->ave8->Cr;
-            unsigned int *a_Cb = stacks->ave8->Cb;
-            for (i = 0, j = 0, k = 1; i < n; i += 2, j++, k += 2) {
-                a_Y[i] += cur_Y[i];
-                a_Y[k] += cur_Y[k];
-                a_Cr[j] += cur_Cr[j];
-                a_Cb[j] += cur_Cb[j];
-            }
-        } else {
-            for (i = 0; i < n; i++) {
-                a_Y[i] += cur_Y[i];
-                // a_Y[k] += cur_Y[k];
-            }
-        }
+        stack_ave8(current_frame, stacks);
     }
 
     if (stacks->ave24 != NULL) {
-        unsigned int *A_Y = stacks->ave24->Y;
-        for (i = 0; i < n; i++) {
-            A_Y[i] += cur_Y[i];
-            // A_Y[k] += cur_Y[k];
-        }
-        /*
-        if(current_frame.channels == 3){
-            for(i=0; i<n2; i++){
-                stacks->ave24->Cr[i] += current_frame.Cr[i];
-                stacks->ave24->Cb[i] += current_frame.Cb[i];
-            }
-        }
-        */
-        // stacks->ave24->num_imgs++;
+        stack_ave24(current_frame, stacks);
     }
-
-    // pthread_exit(NULL);
 }

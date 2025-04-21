@@ -67,8 +67,8 @@ static void process_frame_yuyv_three_chans(unsigned char *p,
                                            unsigned char *cur_Cr,
                                            unsigned long sizeimage);
 
-static int process_frame(unsigned char *p, struct timeb tmb,
-                         struct frame *current_frame, struct v4l2_format fmt);
+static int process_frame(unsigned char *p, struct frame *current_frame,
+                         struct v4l2_format fmt);
 
 static void stack_max_latest_time(struct frame *current_frame,
                                   struct stacks *stacks);

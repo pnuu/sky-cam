@@ -341,7 +341,7 @@ static int read_frame(int fd, struct buffer *mmap_buffers,
                       struct frame *current_frame, struct v4l2_format fmt) {
     struct v4l2_buffer buf;
     time_t frametime;
-    struct timeb tmb;
+    struct timespec t_spec;
 
     CLEAR(buf);
 
@@ -367,15 +367,15 @@ static int read_frame(int fd, struct buffer *mmap_buffers,
 
     assert(buf.index < N_MMAP_BUFFERS);
 
-    ftime(&tmb);
+    clock_gettime(CLOCK_REALTIME, &t_spec);
     frametime = buf.timestamp.tv_sec;
 
     if (frametime > 0) {
-        current_frame->timestamp = tmb.time;
-        current_frame->usec = tmb.millitm * 1000;
+        current_frame->timestamp = t_spec.tv_sec;
+        current_frame->usec = t_spec.tv_nsec / 1000;
         frametime = time(NULL);
 
-        process_frame(mmap_buffers[buf.index].start, tmb, current_frame, fmt);
+        process_frame(mmap_buffers[buf.index].start, current_frame, fmt);
 
         if (xioctl(fd, VIDIOC_QBUF, &buf) == -1) {
             errno_exit("VIDIOC_QBUF");
@@ -451,8 +451,8 @@ static void process_frame_yuyv_three_chans(unsigned char *p,
     process_frame_yuv_three_chans(p, cur_Y, cur_Cb, cur_Cr, sizeimage, offsets);
 }
 
-static int process_frame(unsigned char *p, struct timeb tmb,
-                         struct frame *current_frame, struct v4l2_format fmt) {
+static int process_frame(unsigned char *p, struct frame *current_frame,
+                         struct v4l2_format fmt) {
     unsigned char *cur_Y = current_frame->Y;
     unsigned char *cur_Cb = current_frame->Cb;
     unsigned char *cur_Cr = current_frame->Cr;

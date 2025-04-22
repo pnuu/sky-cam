@@ -39,6 +39,7 @@ static void usage(FILE *fp, int argc, char **argv);
 static void mainloop(int fd, int delay_start, int delay_between_frames,
                      unsigned long capture_length, struct stacks *stacks1,
                      struct stacks *stacks2, struct v4l2_format fmt);
+static int deque_buffer(int fd, struct v4l2_buffer buf);
 static int read_frame(int fd, struct buffer *mmap_buffers,
                       struct frame *current_frame, struct v4l2_format fmt);
 static void process_frame_grey(unsigned char *p, unsigned char *cur_Y,

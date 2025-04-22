@@ -337,12 +337,7 @@ static void mainloop(int fd, int delay_start, int delay_between_frames,
     }
 }
 
-static int read_frame(int fd, struct buffer *mmap_buffers,
-                      struct frame *current_frame, struct v4l2_format fmt) {
-    struct v4l2_buffer buf;
-    time_t frametime;
-    struct timespec t_spec;
-
+static int deque_buffer(int fd, struct v4l2_buffer buf) {
     CLEAR(buf);
 
     buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -364,16 +359,22 @@ static int read_frame(int fd, struct buffer *mmap_buffers,
                 errno_exit("VIDIOC_DQBUF");
         }
     }
-
     assert(buf.index < N_MMAP_BUFFERS);
 
-    clock_gettime(CLOCK_REALTIME, &t_spec);
-    frametime = buf.timestamp.tv_sec;
+    return 1;
+}
 
-    if (frametime > 0) {
-        current_frame->timestamp = t_spec.tv_sec;
-        current_frame->usec = t_spec.tv_nsec / 1000;
-        frametime = time(NULL);
+static int read_frame(int fd, struct buffer *mmap_buffers,
+                      struct frame *current_frame, struct v4l2_format fmt) {
+    struct v4l2_buffer buf;
+
+    if (deque_buffer(fd, buf) == 0) {
+      return 0;
+    }
+
+    if (buf.timestamp.tv_sec > 0) {
+        current_frame->timestamp = buf.timestamp.tv_sec;
+        current_frame->usec = buf.timestamp.tv_usec;
 
         process_frame(mmap_buffers[buf.index].start, current_frame, fmt);
 

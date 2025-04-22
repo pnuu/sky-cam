@@ -35,6 +35,11 @@ static const struct option long_options[] = {
     {"help", no_argument, NULL, 'h'},
     {0, 0, 0, 0}};
 
+static void parse_opts(int argc, char **argv, struct stacks stacks1,
+                       struct stacks stacks2, char *dev_name,
+                       unsigned int *delay_start, int *delay_between_frames,
+                       long unsigned int *capture_length);
+
 static void usage(FILE *fp, int argc, char **argv);
 static void mainloop(int fd, int delay_start, int delay_between_frames,
                      unsigned long capture_length, struct stacks *stacks1,

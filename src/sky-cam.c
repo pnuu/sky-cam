@@ -6,20 +6,10 @@
 
 #include "sky-cam.h"
 
-int main(int argc, char **argv) {
-    char *dev_name = "/dev/video0";
-
-    struct stacks stacks1, stacks2;
-    unsigned int delay_start = 60;
-    int delay_between_frames = -1;
-    struct v4l2_format fmt;
-    unsigned long capture_length = ULONG_MAX;
-
-    int fd;
-
-    pre_pre_init_stacks(&stacks1);
-    pre_pre_init_stacks(&stacks2);
-
+static void parse_opts(int argc, char **argv, struct stacks stacks1,
+                       struct stacks stacks2, char *dev_name,
+                       unsigned int *delay_start, int *delay_between_frames,
+                       long unsigned int *capture_length) {
     for (;;) {
         int index;
         int c;
@@ -68,13 +58,13 @@ int main(int argc, char **argv) {
                 stacks2.latest = malloc(sizeof(struct frame));
                 break;
             case 'd':
-                sscanf(optarg, "%d", &delay_between_frames);
+                sscanf(optarg, "%d", delay_between_frames);
                 break;
             case 'D':
-                sscanf(optarg, "%ud", &delay_start);
+                sscanf(optarg, "%ud", delay_start);
                 break;
             case 'l': /* Length of imaging period */
-                sscanf(optarg, "%ld", &capture_length);
+                sscanf(optarg, "%ld", capture_length);
                 break;
             case 'p': /* Image prefix */
                 stacks1.prefix = optarg;
@@ -118,6 +108,24 @@ int main(int argc, char **argv) {
                 exit(EXIT_FAILURE);
         }
     }
+}
+
+int main(int argc, char **argv) {
+    char *dev_name = "/dev/video0";
+
+    struct stacks stacks1, stacks2;
+    unsigned int delay_start = 60;
+    int delay_between_frames = -1;
+    struct v4l2_format fmt;
+    unsigned long capture_length = ULONG_MAX;
+
+    int fd;
+
+    pre_pre_init_stacks(&stacks1);
+    pre_pre_init_stacks(&stacks2);
+
+    parse_opts(argc, argv, stacks1, stacks2, dev_name, &delay_start,
+               &delay_between_frames, &capture_length);
 
     if (stacks1.min == NULL && stacks1.max == NULL && stacks1.ave8 == NULL &&
         stacks1.ave24 == NULL && stacks1.latest == NULL) {
@@ -369,7 +377,7 @@ static int read_frame(int fd, struct buffer *mmap_buffers,
     struct v4l2_buffer buf;
 
     if (deque_buffer(fd, buf) == 0) {
-      return 0;
+        return 0;
     }
 
     if (buf.timestamp.tv_sec > 0) {
